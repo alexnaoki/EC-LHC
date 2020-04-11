@@ -28,19 +28,26 @@ class Viewer:
         self.button02 = ipywidgets.Button(description='Plot')
         self.button02.on_click(self.button_plot)
 
-        self.x_scale = bq.LinearScale()
+        self.x_scale = bq.DateScale()
         # self.x_scale = bq.DateScale()
         self.y_scale = bq.LinearScale()
         self.xax = bq.Axis(scale=self.x_scale, label='x')
         self.yax = bq.Axis(scale=self.y_scale, label='y', orientation='vertical')
 
+        self.xax_tab02_02 = bq.Axis(scale=self.x_scale, label='x')
+        self.yax_tab02_02 = bq.Axis(scale=self.y_scale, label='y', orientation='vertical')
+
         self.fig = bq.Figure(marks=[], axes=[self.xax, self.yax], animation_duration=1000)
 
         self.select_files.observe(self._create_lines, 'value')
+        self.select_files.observe(self._create_lines_diff, 'value')
+        self.button_diff01 = ipywidgets.Button(description='Check Difference')
+        self.button_diff01.on_click(self._button_diff01)
+        self.fig_diff = bq.Figure(marks=[], axes=[self.xax_tab02_02, self.yax_tab02_02], animation_duration=1000)
 
         self.out = ipywidgets.Output(layout={'border': '1px solid black'})
 
-        self.tab2 = ipywidgets.VBox([ipywidgets.HBox([self.column_x_axis, self.column_y_axis]), self.button02,self.fig,self.out])
+        self.tab2 = ipywidgets.VBox([ipywidgets.HBox([self.column_x_axis, self.column_y_axis]), self.button02,self.fig,self.button_diff01,self.fig_diff,self.out])
         ####################
 
         ####    TAB3    ####
@@ -102,16 +109,28 @@ class Viewer:
         self.button06.on_click(self._button_plot_compare)
 
         self.x_scale03 = bq.DateScale()
-        self.y_scale03 = bq.LinearScale()
-        self.xax03 = bq.Axis(scale=self.x_scale03, label='x')
-        self.yax03_01 = bq.Axis(scale=self.y_scale03, label='y1', orientation='vertical', side='left')
-        self.yax03_02 = bq.Axis(scale=self.y_scale03, label='y2', orientation='vertical', side='right')
-        self.fig03 = bq.Figure(marks=[], axes=[self.xax03, self.yax03_01, self.yax03_02], animation_duration=1000)
+        self.y_scale03_01 = bq.LinearScale()
+        self.y_scale03_02 =  bq.LinearScale()
 
+        self.x_scale04 = bq.LinearScale()
+        self.y_scale04 = bq.LinearScale()
+
+        self.xax03 = bq.Axis(scale=self.x_scale03, label='x1')
+        # self.xax03_02 = bq.Axis(scale=self.y_scale03, label='y1')
+        # self.xax03_03 = bq.Axis(scale=self.y_scale03, label='ysa')
+        self.yax03_01 = bq.Axis(scale=self.y_scale03_01, label='y1', orientation='vertical', side='left')
+        self.yax03_02 = bq.Axis(scale=self.y_scale03_01, label='y2', orientation='vertical', side='right')
+
+        self.xax04 = bq.Axis(scale=self.y_scale04, label='y1')
+        self.yax04 = bq.Axis(scale=self.y_scale04, label='y2', orientation='vertical', side='left')
+
+        self.fig03 = bq.Figure(marks=[], axes=[self.xax03, self.yax03_01, self.yax03_02], animation_duration=1000, layout=ipywidgets.Layout(width='100%'))
+
+        self.fig04 = bq.Figure(marks=[], axes=[self.xax04, self.yax04], animation_duration=1000, layout=ipywidgets.Layout(width='50%'))
 
         self.out03 = ipywidgets.Output(layout={'border':'1px solid black'})
-
-        self.tab5 = ipywidgets.VBox([ipywidgets.HBox([self.path_01, self.path_02]),self.button05,ipywidgets.VBox([self.select01, self.select02]),ipywidgets.HBox([self.column_y_01, self.column_y_02]), self.button06, self.fig03, self.out03])
+        self.tab5 = ipywidgets.VBox([ipywidgets.HBox([self.path_01, self.path_02]),self.button05,ipywidgets.VBox([self.select01, self.select02]),ipywidgets.HBox([self.column_y_01, self.column_y_02]), self.button06, ipywidgets.HBox([self.fig03, self.fig04]), self.out03])
+        # self.tab5 = ipywidgets.VBox([ipywidgets.HBox([self.path_01, self.path_02]),self.button05,ipywidgets.VBox([self.select01, self.select02]),ipywidgets.HBox([self.column_y_01, self.column_y_02]), self.button06, self.fig03, self.out03])
         ####################
 
         self.tabs = ipywidgets.Tab(children=[self.tab1, self.tab2, self.tab3, self.tab4, self.tab5])
@@ -132,7 +151,7 @@ class Viewer:
 
     def _create_lines03(self, *args):
         with self.out03:
-            self.lines03 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale03, 'y': self.y_scale03},colors=['red']) for i in range(len(self.select01.value))]
+            self.lines03 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale03, 'y': self.y_scale03_01},colors=['red']) for i in range(len(self.select01.value))]
             # self.fig03.marks = self.lines03
             # self.lines04 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale03, 'y': self.y_scale03}) for i in range(len(self.select02.value))]
 
@@ -142,10 +161,19 @@ class Viewer:
 
     def _create_lines04(self, *args):
         with self.out03:
-            self.lines04 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale03, 'y': self.y_scale03},colors=['blue']) for i in range(len(self.select02.value))]
+            self.lines04 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale03, 'y': self.y_scale03_01},colors=['blue']) for i in range(len(self.select02.value))]
             # self.lines03.append(np.squeeze(self.lines04))
             self.lines03 = self.lines03 + self.lines04
             self.fig03.marks = self.lines03
+
+            self.scatter01 = bq.Scatter(x=[], y=[], scales={'x':self.y_scale04, 'y':self.y_scale04})
+            self.fig04.marks = [self.scatter01]
+
+    def _create_lines_diff(self, *args):
+        with self.out:
+            self.lines_tab02_02 = [bq.Lines(x=[], y=[], scales={'x':self.x_scale, 'y':self.y_scale}) for i in range(len(self.select_files.value))]
+            self.fig_diff.marks = self.lines_tab02_02
+            self.fig_diff.interaction = bq.interacts.FastIntervalSelector(scale=self.x_scale, marks=[self.lines_tab02_02[0]])
 
     def button_show_path(self, *args):
         try:
@@ -188,11 +216,11 @@ class Viewer:
     def button_plot(self, *args):
         with self.out:
 
-            dataframes = [pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]) for i in self.select_files.value]
+            self.dataframes_tab02 = [pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]) for i in self.select_files.value]
 
             self.xax.label = self.column_x_axis.value
             self.yax.label = self.column_y_axis.value
-            for i, f in enumerate(zip(dataframes, self.select_files.value)):
+            for i, f in enumerate(zip(self.dataframes_tab02, self.select_files.value)):
 
                 self.lines[i].x = f[0]['{}'.format(self.column_x_axis.value)].to_list()
                 self.lines[i].y = f[0]['{}'.format(self.column_y_axis.value)].to_list()
@@ -209,12 +237,17 @@ class Viewer:
                 self.lines02[i].y = f[0]['{}'.format(self.column_y_axis_lfdl.value)].to_list()
 
     def _button_plot_compare(self, *args):
-        dataframes01 = [pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]) for i in self.select01.value]
-        dataframes02 = [pd.read_csv(i, skiprows=[0,2,3], na_values='NAN', parse_dates=['TIMESTAMP']) for i in self.select02.value]
+        with self.out03:
+            dataframes01 = [pd.read_csv(i, skiprows=[0,2], usecols=['date','time','{}'.format(self.column_y_01.value)],na_values=-9999, parse_dates=[['date','time']]) for i in self.select01.value]
+            dataframes02 = [pd.read_csv(i, skiprows=[0,2,3], usecols=['TIMESTAMP','{}'.format(self.column_y_02.value)], na_values='NAN', parse_dates=['TIMESTAMP']) for i in self.select02.value]
 
         self.xax03.label = 'Time'
+
         self.yax03_01.label = self.column_y_01.value
+        # self.xax03_02.label = self.column_y_01.value
         self.yax03_02.label = self.column_y_02.value
+        self.xax04.label = self.column_y_01.value
+        self.yax04.label = self.column_y_02.value
 
         for i,f in enumerate(dataframes01):
             self.lines03[i].x = f['{}'.format('date_time')].to_list()
@@ -223,3 +256,30 @@ class Viewer:
         for i, f in enumerate(dataframes02, start=len(dataframes01)):
             self.lines03[i].x = f['{}'.format('TIMESTAMP')].to_list()
             self.lines03[i].y = f['{}'.format(self.column_y_02.value)].to_list()
+
+        # df01 = [df.set_index('date_time') for df in dataframes01]
+        # df02 = [df.set_index('TIMESTAMP') for df in dataframes02]
+        with self.out03:
+            df01_concat = pd.concat(dataframes01, axis=0)
+            df01_concat.reset_index()
+            df02_concat = pd.concat(dataframes02, axis=0)
+            df02_concat.reset_index()
+
+            df12 = pd.merge(df01_concat, df02_concat, left_on='date_time', right_on='TIMESTAMP')
+            self.scatter01.x = df12['{}'.format(self.column_y_01.value)].to_list()
+            self.scatter01.y = df12['{}'.format(self.column_y_02.value)].to_list()
+            # print(df01_concat)
+
+    def _button_diff01(self, *args):
+        with self.out:
+            self.xax_tab02_02.label='Time'
+            self.yax_tab02_02.label = self.column_y_axis.value
+
+            # df_concat = pd.concat(self.dataframes_tab02, axis=0)
+            # df_concat.reset_index()
+
+            self.lines_tab02_02[0].y = self.dataframes_tab02[0]['{}'.format(self.column_y_axis.value)] - self.dataframes_tab02[1]['{}'.format(self.column_y_axis.value)]
+            self.lines_tab02_02[0].x = self.dataframes_tab02[0]['date_time']
+
+            self.lines_tab02_02[1].y = (self.dataframes_tab02[0]['{}'.format(self.column_y_axis.value)] - self.dataframes_tab02[1]['{}'.format(self.column_y_axis.value)]).cumsum()
+            self.lines_tab02_02[1].x = self.dataframes_tab02[0]['date_time']
