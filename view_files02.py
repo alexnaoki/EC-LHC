@@ -141,6 +141,7 @@ class Viewer:
                 -General Widgets
                 -ACCORDION01
         """
+        ####### ACCORDION 01 #######
 
         self.folder_path_02_01 = ipywidgets.Text(placeholder='Folder Path of CoSpectra files',
                                               layout=ipywidgets.Layout(width='80%'))
@@ -168,7 +169,6 @@ class Viewer:
                                                        description='Y-Axis')
         self.out_02 = ipywidgets.Output()
 
-        ####### ACCORDION 01 #######
         self.progress_02_01 = ipywidgets.FloatProgress(value=0, min=0, max=1,
                                                        description='Loading Data:',
                                                        layout=ipywidgets.Layout(width='90%'))
@@ -208,7 +208,7 @@ class Viewer:
         self.fig_02_01.axes = [self.x_axis_02_01, self.y_axis_02_01]
         ####### ############ #######
 
-        ####### ACCORDION 01 #######
+        ####### ACCORDION 02 #######
         self.folder_path_02_02 = ipywidgets.Text(placeholder='Folder 01 to COMPARE',
                                                  layout=ipywidgets.Layout(width='80%'))
         self.folder_path_02_03 = ipywidgets.Text(placeholder='Folder 02 to COMPARE',
@@ -216,7 +216,64 @@ class Viewer:
 
         self.button_showPath_02_02 = ipywidgets.Button(description='Show BOTH',
                                                        layout=ipywidgets.Layout(height='100%', width='20%'))
+        self.button_showPath_02_02.on_click(self._button_showPath03)
+        self.radioButton_02_02 = ipywidgets.RadioButtons(description='Choose: ',
+                                                         options=['Select Files', 'All'],
+                                                         value=None)
+        self.radioButton_02_02.observe(self._radioButton_observe_02, 'value')
 
+        self.select_files_02_02 = ipywidgets.SelectMultiple(description='Select 01:',
+                                                            layout=ipywidgets.Layout(width='90%'))
+
+        self.select_files_02_03 = ipywidgets.SelectMultiple(description='Select 02:',
+                                                            layout=ipywidgets.Layout(width='90%'))
+
+        self.select_files_02_02.observe(self._select_observe_03,'value')
+        self.select_files_02_03.observe(self._select_observe_04,'value')
+
+
+        self.dropdown_columnX_02_02 = ipywidgets.Dropdown(description='X-Axis')
+        self.dropdown_columnY_02_02 = ipywidgets.Dropdown(description='Y-Axis')
+
+        self.progress_02_02 = ipywidgets.FloatProgress(value=0, min=0, max=1,
+                                                       description='Loading Data:',
+                                                       layout=ipywidgets.Layout(width='90%'))
+
+        self.button_plot_04 = ipywidgets.Button(description='Plot Points')
+        self.button_plot_04.on_click(self._button_plot04)
+
+        self.button_plot_05 = ipywidgets.Button(description='Plot Mean')
+        self.button_plot_05.on_click(self._button_plot05)
+
+        self.button_plot_06 = ipywidgets.Button(description='Plot Diff')
+        self.button_plot_06.on_click(self._button_diff02)
+
+
+        self.play_02 = ipywidgets.Play(value=0, min=0,max=100, step=1,
+                                       interval=self.time_interval_01)
+
+        self.intSlider_02_02 = ipywidgets.IntSlider(description='Timeline',
+                                                    layout=ipywidgets.Layout(width='50%'))
+
+        self.x_scale_02_02 = bq.LogScale(min=0.0001,max=100)
+        self.y_scale_02_02 = bq.LogScale(min=0.0001, max=10)
+        self.y_scale_02_03 = bq.LinearScale()
+
+        self.x_axis_02_02 = bq.Axis(scale=self.x_scale_02_02,
+                                    label='x',
+                                    tick_rotate=270,
+                                    tick_format='0.4f')
+        self.y_axis_02_02 = bq.Axis(scale=self.y_scale_02_02,
+                                    label='y',
+                                    orientation='vertical',
+                                    tick_format='0.4f')
+        self.y_axis_02_03 = bq.Axis(scale=self.y_scale_02_03,
+                                    label='y2',orientation='vertical', side='right')
+
+        self.fig_02_02 = bq.Figure(marks=[],
+                                   animation_duration=self.time_interval_01,
+                                   layout=ipywidgets.Layout(width='80%'),
+                                   axes=[self.x_axis_02_02, self.y_axis_02_02,self.y_axis_02_03])
 
         ####### ############ #######
 
@@ -233,13 +290,172 @@ class Viewer:
                                                                             ipywidgets.HBox([self.play_01, self.intSlider_02_01]),
                                                                             self.fig_02_01]),
                                                            ipywidgets.VBox([ipywidgets.HBox([ipywidgets.VBox([self.folder_path_02_02,
-                                                                                                              self.folder_path_02_03], layout=ipywidgets.Layout(width='100%')), self.button_showPath_02_02])])])
+                                                                                                              self.folder_path_02_03], layout=ipywidgets.Layout(width='100%')), self.button_showPath_02_02]),
+                                                                           self.radioButton_02_02,
+                                                                           self.select_files_02_02,
+                                                                           self.select_files_02_03,
+                                                                           ipywidgets.HBox([self.dropdown_columnX_02_02, self.dropdown_columnY_02_02]),
+                                                                           self.progress_02_02,
+                                                                           ipywidgets.HBox([self.button_plot_04, self.button_plot_05, self.button_plot_06]),
+                                                                           ipywidgets.HBox([self.play_02, self.intSlider_02_02]),
+                                                                           self.fig_02_02])])
         self.accordion_02.set_title(0, 'Simple Plot')
         self.accordion_02.set_title(1, 'Compare Plot')
         self.accordion_02.selected_index = None
 
         return ipywidgets.VBox([self.accordion_02,
                                 self.out_02])
+
+    def _button_showPath03(self, *args):
+        try:
+            folder_filesPath01 = pathlib.Path(self.folder_path_02_02.value)
+            folder_filesPath02 = pathlib.Path(self.folder_path_02_03.value)
+            files_path01 = folder_filesPath01.rglob('*binned_cospectra*.csv')
+            files_path02 = folder_filesPath02.rglob('*binned_cospectra*.csv')
+            self.select_files_02_02.options = [i for i in files_path01]
+            self.select_files_02_03.options = [i for i in files_path02]
+            self.dropdown_columnX_02_02.options = pd.read_csv(self.select_files_02_02.options[0],skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999).columns.to_list()
+            self.dropdown_columnY_02_02.options = self.dropdown_columnX_02_02.options
+
+        except:
+            pass
+
+    def _radioButton_observe_02(self, *args):
+        with self.out_02:
+            print(self.radioButton_02_02.value)
+            self.progress_02_02.bar_style = 'info'
+
+            self.button_plot_04.disabled = True
+            self.button_plot_05.disabled = True
+            self.play_02.disabled = True
+            self.intSlider_02_02.disabled = True
+            self.progress_02_02.value = 0
+
+            if self.radioButton_02_02.value == 'All':
+                self.scatter_02_02 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['blue']) for i in range(len(self.select_files_02_02.options))]
+                self.scatter_02_03 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['green']) for i in range(len(self.select_files_02_03.options))]
+                # pass
+                # self.select_files_02_02.disabled = False
+                self.intSlider_02_02.max = len(self.select_files_02_02.options)
+
+                self.dfs_03 = []
+                self.dfs_04 = []
+                for i,j in zip(self.select_files_02_02.options, self.select_files_02_03.options):
+                    self.dfs_03.append(pd.read_csv(i,skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+                    self.dfs_04.append(pd.read_csv(j,skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+
+                    self.progress_02_02.value += 1/len(self.select_files_02_02.options)
+
+            if self.radioButton_02_02.value == 'Select Files':
+                self.scatter_02_02 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['blue']) for i in range(len(self.select_files_02_02.value))]
+                self.scatter_02_03 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['green']) for i in range(len(self.select_files_02_03.value))]
+
+            else:
+                print('erro')
+                pass
+
+
+            self.lines_02_02 = [bq.Lines(scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['blue'])]
+            self.lines_02_03 = [bq.Lines(scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_02},colors=['green'])]
+
+            self.lines_02_04 = [bq.Lines(scales={'x':self.x_scale_02_02, 'y':self.y_scale_02_03},colors=['red'])]
+
+            self.fig_02_02.marks = self.scatter_02_02 + self.scatter_02_03 + self.lines_02_02 + self.lines_02_03 + self.lines_02_04
+
+            self.button_plot_04.disabled = False
+            self.button_plot_05.disabled = False
+            self.play_02.disabled = False
+            self.intSlider_02_02.disabled = False
+            self.progress_02_02.bar_style = 'success'
+
+    def _select_observe_03(self, *args):
+        with self.out_02:
+            self.progress_02_02.bar_style = 'info'
+
+            self.button_plot_04.disabled = True
+            self.button_plot_05.disabled = True
+            self.play_02.disabled = True
+            self.intSlider_02_02.disabled = True
+            self.progress_02_02.value = 0
+
+            if self.radioButton_02_02.value == 'Select Files':
+                self.scatter_02_02 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02,'y':self.y_scale_02_02},colors=['blue']) for i in range(len(self.select_files_02_02.value))]
+                self.select_files_02_03.value = self.find_sameDay_cospectra(list_files=self.select_files_02_02.value,
+                                                                            all_files=self.select_files_02_03.options)
+                self.scatter_02_03 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02,'y':self.y_scale_02_02},colors=['green']) for i in range(len(self.select_files_02_03.value))]
+
+                self.intSlider_02_02.max = len(self.select_files_02_02.value)
+
+
+                self.dfs_03 = []
+                self.dfs_04 = []
+
+                for i,j in zip(self.select_files_02_02.value, self.select_files_02_03.value):
+                    self.dfs_03.append(pd.read_csv(i, skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+                    self.dfs_04.append(pd.read_csv(j, skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+
+                    self.progress_02_02.value += 1/len(self.select_files_02_02.value)
+
+            else:
+                pass
+
+            self.fig_02_02.marks = self.scatter_02_02 + self.scatter_02_03 + self.lines_02_02 + self.lines_02_03 + self.lines_02_04
+
+            self.button_plot_04.disabled = False
+            self.button_plot_05.disabled = False
+            self.play_02.disabled = False
+            self.intSlider_02_02.disabled = False
+            self.progress_02_02.bar_style = 'success'
+
+
+
+
+    def _select_observe_04(self, *args):
+        with self.out_02:
+            self.progress_02_02.bar_style = 'info'
+
+            self.button_plot_04.disabled = True
+            self.button_plot_05.disabled = True
+            self.play_02.disabled = True
+            self.intSlider_02_02.disabled = True
+            self.progress_02_02.value = 0
+
+            if self.radioButton_02_02.value == 'Select Files':
+                self.scatter_02_03 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02,'y':self.y_scale_02_02},colors=['green']) for i in range(len(self.select_files_02_03.value))]
+                self.select_files_02_02.value = self.find_sameDay_cospectra(list_files=self.select_files_02_03.value,
+                                                                            all_files=self.select_files_02_02.options)
+                self.scatter_02_02 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_02_02,'y':self.y_scale_02_02},colors=['blue']) for i in range(len(self.select_files_02_02.value))]
+
+                self.intSlider_02_02.max = len(self.select_files_02_02.value)
+
+
+                self.dfs_03 = []
+                self.dfs_04 = []
+
+                for i,j in zip(self.select_files_02_02.value, self.select_files_02_03.value):
+                    self.dfs_03.append(pd.read_csv(i, skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+                    self.dfs_04.append(pd.read_csv(j, skiprows=[0,1,2,3,4,5,6,7,8,9,10], na_values=-9999, engine='python'))
+
+                    self.progress_02_02.value += 1/len(self.select_files_02_02.value)
+
+
+            else:
+                pass
+            self.fig_02_02.marks = self.scatter_02_02 + self.scatter_02_03 + self.lines_02_02 + self.lines_02_03 + self.lines_02_04
+
+            self.button_plot_04.disabled = False
+            self.button_plot_05.disabled = False
+            self.play_02.disabled = False
+            self.intSlider_02_02.disabled = False
+            self.progress_02_02.bar_style = 'success'
+
+    def find_sameDay_cospectra(self, list_files, all_files):
+        same = []
+        for n in list_files:
+            for s in all_files:
+                if n.name[:13] in s.name:
+                    same.append(s)
+        return same
 
     def _play_02_01(self, *args):
         """ TAB02
@@ -265,7 +481,6 @@ class Viewer:
         Description: Plot MEAN Line given DataFrames (list of).
 
         """
-        # Plot Mean
         with self.out_02:
             dfs_concat = pd.concat(self.dfs_02)
             self.dfs_mean_x = dfs_concat.groupby(by=dfs_concat.index).mean()['{}'.format(self.dropdown_columnX_02_01.value)].to_list()
@@ -273,6 +488,7 @@ class Viewer:
 
             self.lines_02_01[0].x = self.dfs_mean_x
             self.lines_02_01[0].y = self.dfs_mean
+            print(self.lines_02_01[0].y)
 
     def _button_showPath01(self, *args):
         """ TAB01
@@ -467,6 +683,53 @@ class Viewer:
                     self.scatter_02_01[i].x = f['{}'.format(self.dropdown_columnX_02_01.value)].to_list()
                     self.scatter_02_01[i].y = f['{}'.format(self.dropdown_columnY_02_01.value)].to_list()
 
+    def _button_plot04(self, *args):
+        with self.out_02:
+
+            if self.radioButton_02_02.value == 'Select Files':
+                self.x_axis_02_02.label = self.dropdown_columnX_02_02.value
+                self.y_axis_02_02.label = self.dropdown_columnY_02_02.value
+
+                for i,(f,g) in enumerate(zip(self.dfs_03, self.dfs_04)):
+                    self.scatter_02_02[i].x = f['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+                    self.scatter_02_02[i].y = f['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+
+                    self.scatter_02_03[i].x = g['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+                    self.scatter_02_03[i].y = g['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+
+            elif self.radioButton_02_02.value == 'All':
+                self.x_axis_02_02.label = self.dropdown_columnX_02_02.value
+                self.y_axis_02_02.label = self.dropdown_columnY_02_02.value
+
+                for i,(f,g) in enumerate(zip(self.dfs_03, self.dfs_04)):
+                    self.scatter_02_02[i].x = f['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+                    self.scatter_02_02[i].y = f['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+
+                    self.scatter_02_03[i].x = g['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+                    self.scatter_02_03[i].y = g['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+
+
+    def _button_plot05(self, *args):
+        with self.out_02:
+            dfs_concat01 = pd.concat(self.dfs_03)
+            dfs_concat02 = pd.concat(self.dfs_04)
+
+            print()
+
+            self.dfs_mean_x_01 = dfs_concat01.groupby(by=dfs_concat01.index).mean()['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+            self.dfs_mean_x_02 = dfs_concat01.groupby(by=dfs_concat02.index).mean()['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+
+            self.dfs_mean_y_01 = dfs_concat01.groupby(by=dfs_concat01.index).mean()['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+            self.dfs_mean_y_02 = dfs_concat01.groupby(by=dfs_concat02.index).mean()['{}'.format(self.dropdown_columnY_02_02.value)].to_list()
+
+            self.lines_02_02[0].x = self.dfs_mean_x_01
+            self.lines_02_02[0].y = self.dfs_mean_y_01
+
+            self.lines_02_03[0].x = self.dfs_mean_x_02
+            self.lines_02_03[0].y = self.dfs_mean_y_02
+
+            print(self.lines_02_03)
+
     def _button_diff01(self, *args):
         """ TAB01
                 -ACCORDION02
@@ -482,6 +745,15 @@ class Viewer:
 
             self.lines_01_01[0].x = self.dfs_01[0]['{}'.format(self.dropdown_columnX_01.value)].to_list()
             self.lines_01_01[0].y = (self.dfs_01[0]['{}'.format(self.dropdown_columnY_01.value)]-self.dfs_01[1]['{}'.format(self.dropdown_columnY_01.value)]).cumsum()
+
+    def _button_diff02(self, *args):
+        with self.out_02:
+            print('diff')
+            self.lines_02_04[0].x = self.dfs_03[0]['{}'.format(self.dropdown_columnX_02_02.value)].to_list()
+            self.lines_02_04[0].y =(self.dfs_03[0]['{}'.format(self.dropdown_columnY_02_02.value)]-self.dfs_04[0]['{}'.format(self.dropdown_columnY_02_02.value)]).to_list()
+            print(self.lines_02_04[0].y)
+            # print(self.fig_02_02.marks)
+            # print(len(self.lines_02_04[0].x),len(self.lines_02_04[0].y))
 
     def _button_flag01(self, *args):
         """ TAB01
