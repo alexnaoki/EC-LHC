@@ -25,29 +25,46 @@ class Viewer:
                 -ACCORDION02
                 -ACCORDION03
         """
-        self.folder_path = ipywidgets.Text(placeholder='Insert Folder Path HERE!',
-                                           layout=ipywidgets.Layout(width='90%'))
-
-        self.button_showPath_01 = ipywidgets.Button(description='Show CSV Files')
-        self.button_showPath_01.on_click(self._button_showPath01)
-
-        self.list_filesPath_01 = []
-        self.select_files_01 = ipywidgets.SelectMultiple(options=self.list_filesPath_01,
-                                                         description='CSVs Files',
-                                                         layout=ipywidgets.Layout(width='99%'))
-
-        self.select_files_01.observe(self._select_observe_01, 'value')
-
-        self.column_names_01 = []
-        self.dropdown_columnX_01 = ipywidgets.Dropdown(options=self.column_names_01,
-                                                       description='X-Axis')
-
-        self.dropdown_columnY_01 = ipywidgets.Dropdown(options=self.column_names_01,
-                                                       description='Y-Axis')
+        # self.folder_path = ipywidgets.Text(placeholder='Insert Folder Path HERE!',
+        #                                    layout=ipywidgets.Layout(width='90%'))
+        #
+        # self.button_showPath_01 = ipywidgets.Button(description='Show CSV Files')
+        # self.button_showPath_01.on_click(self._button_showPath01)
+        #
+        # self.list_filesPath_01 = []
+        # self.select_files_01 = ipywidgets.SelectMultiple(options=self.list_filesPath_01,
+        #                                                  description='CSVs Files',
+        #                                                  layout=ipywidgets.Layout(width='99%'))
+        #
+        # self.select_files_01.observe(self._select_observe_01, 'value')
+        #
+        # self.column_names_01 = []
+        # self.dropdown_columnX_01 = ipywidgets.Dropdown(options=self.column_names_01,
+        #                                                description='X-Axis')
+        #
+        # self.dropdown_columnY_01 = ipywidgets.Dropdown(options=self.column_names_01,
+        #                                                description='Y-Axis')
 
         ####### ACCORDION 01 #######
-        self.button_plot_01 = ipywidgets.Button(description='Plot')
-        self.button_plot_01.on_click(self._button_plot01)
+        self.folder_path_01_01 = ipywidgets.Text(placeholder='Insert Folder Path HERE!',
+                                                 layout=ipywidgets.Layout(width='90%'))
+        self.button_showPath_01_01 = ipywidgets.Button(description='Show Csv files')
+        self.button_showPath_01_01.on_click(self._button_showPath01_01)
+
+        self.select_files_01_01 = ipywidgets.SelectMultiple(description='CSVs Files',
+                                                            layout=ipywidgets.Layout(width='99%'))
+        self.select_files_01_01.observe(self._select_observe_01_01, 'value')
+
+        self.dropdown_columnX_01_01 = ipywidgets.Dropdown(description='X-Axis')
+
+        self.dropdown_columnY_01_01 = ipywidgets.Dropdown(description='Y-Axis')
+
+        self.button_plot_01_01 = ipywidgets.Button(description='Plot')
+        self.button_plot_01_01.on_click(self._button_plot_01_01)
+
+        self.progress_01_01 = ipywidgets.FloatProgress(value=0, min=0, max=1,
+                                                       description='Loading Data:',
+                                                       layout=ipywidgets.Layout(width='90%'))
 
         self.x_scale_01_01 = bq.DateScale()
         # self.x_scale_01_01 = bq.LinearScale()
@@ -58,16 +75,51 @@ class Viewer:
 
         self.fig_01_01 = bq.Figure(marks=[],
                                    axes=[self.x_axis_01_01, self.y_axis_01_01],
-                                   animation_duration=500)
+                                   animation_duration=self.time_interval_01)
         ####### ############# #######
 
         ####### ACCORDION 02 #######
-        self.button_diff_01 = ipywidgets.Button(description='View Difference')
-        self.button_diff_01.on_click(self._button_diff01)
+        # self.folder_path_01_01 = ipywidgets.Text(placeholder='Insert Folder Path HERE!',
+        #                                          layout=ipywidgets.Layout(width='90%'))
+        # self.button_showPath_01_01 = ipywidgets.Button(description='Show Csv files')
+        # self.button_showPath_01_01.on_click(self._button_showPath01_01)
+        #
+        # self.select_files_01_01 = ipywidgets.SelectMultiple(description='CSVs Files',
+        #                                                     layout=ipywidgets.Layout(width='99%'))
+        # self.select_files_01_01.observe(self._select_observe_01_01, 'value')
+        #
+        # self.dropdown_columnX_01_01 = ipywidgets.Dropdown(description='X-Axis')
+        #
+        # self.dropdown_columnY_01_01 = ipywidgets.Dropdown(description='Y-Axis')
+
+        self.folder_path_01_02 = ipywidgets.Text(placeholder='Insert Folder Path HERE!',
+                                                 layout=ipywidgets.Layout(width='90%'))
+
+        self.button_showPath_01_02 = ipywidgets.Button(description='Show Csv files')
+        self.button_showPath_01_02.on_click(self._button_showPath01_02)
+
+
+        self.select_files_01_02 = ipywidgets.SelectMultiple(description='CSVs Files',
+                                                            layout=ipywidgets.Layout(width='99%'))
+        self.select_files_01_02.observe(self._select_observe_01_02, 'value')
+
+        self.dropdown_columnX_01_02 = ipywidgets.Dropdown(description='X-Axis')
+
+        self.dropdown_columnY_01_02 = ipywidgets.Dropdown(description='Y-Axis')
+
+
+
+        self.button_plot_01_02 = ipywidgets.Button(description='View Difference')
+        # self.button_plot_01_02.on_click(self._button_diff01)
+
+        self.progress_01_02 = ipywidgets.FloatProgress(value=0, min=0,max=1,
+                                                       description='Loading Data:',
+                                                       layout=ipywidgets.Layout(width='90%'))
 
         self.x_scale_01_02 = bq.DateScale()
         self.y_scale_01_02 = bq.LinearScale()
         self.y_scale_01_03 = bq.LinearScale()
+
         self.x_axis_01_02 = bq.Axis(scale=self.x_scale_01_02, label='x')
         self.y_axis_01_02 = bq.Axis(scale=self.y_scale_01_02, label='y', orientation='vertical')
         self.y_axis_01_03 = bq.Axis(scale=self.y_scale_01_03, label='y', orientation='vertical', side='right')
@@ -75,66 +127,82 @@ class Viewer:
 
         self.fig_01_02 = bq.Figure(marks=[],
                                    axes=[self.x_axis_01_02, self.y_axis_01_02, self.y_axis_01_03],
-                                   animation_duration=500)
+                                   animation_duration=self.time_interval_01)
         ####### ############# #######
 
         ####### ACCORDION 03 #######
-        self.intslider_01_01 = ipywidgets.IntSlider(value=2, min=0, max=2, step=1, description='Flag')
-        self.intslider_01_01.observe(self._intslider_observe_01, 'value')
-
-        self.button_flag_01 = ipywidgets.Button(description='Plot')
-        self.button_flag_01.on_click(self._button_flag01)
-
-
-        self.x_scale_01_03 = bq.DateScale()
-        # self.x_scale_01_03 = bq.LinearScale()
-        self.y_scale_01_04 = bq.LinearScale()
-        self.x_axis_01_03 = bq.Axis(scale=self.x_scale_01_03, label='x')
-        self.y_axis_01_04 = bq.Axis(scale=self.y_scale_01_04, label='y', orientation='vertical')
-
-        self.fig_01_03 = bq.Figure(marks=[],
-                                   axes=[self.x_axis_01_03, self.y_axis_01_04],
-                                   animation_duration=500)
-
-
-        self.x_scale_01_04 = bq.OrdinalScale(domain=[(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).strftime('%H:%M') for i in range(48)])
-
-        self.x_axis_01_04 = bq.Axis(scale=self.x_scale_01_04, label='x', tick_rotate=270)
+        # self.intslider_01_01 = ipywidgets.IntSlider(value=2, min=0, max=2, step=1, description='Flag')
+        # self.intslider_01_01.observe(self._intslider_observe_01, 'value')
         #
-        # self.y_axis_01_06 = bq.Axis(scale=self.y_scale_01_05, label='y', orientation='vertical')
-
-        self.y_axis_bar = bq.Axis(scale=bq.LinearScale(), label='y', side='right',orientation='vertical', grid_lines='solid')
-        # self.y_axis_bar_02 = bq.Axis(scale=bq.LinearScale(),label='y2', orientation='vertical')
-
-        self.fig_01_04 = bq.Figure(marks=[],
-                                   axes=[self.x_axis_01_04, self.y_axis_bar],
-                                   animation_duration=500)
-
-
-        self.fig_01_tt = bq.Figure(marks=[],
-                                   axes=[self.x_axis_01_03, self.y_axis_01_04],
-                                   animation_duration=500)
-        # self.brush_01 = bq.BrushIntervalSelector(scale=self.x_axis_01_03)
+        # self.button_flag_01 = ipywidgets.Button(description='Plot')
+        # self.button_flag_01.on_click(self._button_flag01)
+        #
+        #
+        # self.x_scale_01_03 = bq.DateScale()
+        # # self.x_scale_01_03 = bq.LinearScale()
+        # self.y_scale_01_04 = bq.LinearScale()
+        # self.x_axis_01_03 = bq.Axis(scale=self.x_scale_01_03, label='x')
+        # self.y_axis_01_04 = bq.Axis(scale=self.y_scale_01_04, label='y', orientation='vertical')
+        #
+        # self.fig_01_03 = bq.Figure(marks=[],
+        #                            axes=[self.x_axis_01_03, self.y_axis_01_04],
+        #                            animation_duration=500)
+        #
+        #
+        # self.x_scale_01_04 = bq.OrdinalScale(domain=[(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).strftime('%H:%M') for i in range(48)])
+        #
+        # self.x_axis_01_04 = bq.Axis(scale=self.x_scale_01_04, label='x', tick_rotate=270)
+        # #
+        # # self.y_axis_01_06 = bq.Axis(scale=self.y_scale_01_05, label='y', orientation='vertical')
+        #
+        # self.y_axis_bar = bq.Axis(scale=bq.LinearScale(), label='y', side='right',orientation='vertical', grid_lines='solid')
+        # # self.y_axis_bar_02 = bq.Axis(scale=bq.LinearScale(),label='y2', orientation='vertical')
+        #
+        # self.fig_01_04 = bq.Figure(marks=[],
+        #                            axes=[self.x_axis_01_04, self.y_axis_bar],
+        #                            animation_duration=500)
+        #
+        #
+        # self.fig_01_tt = bq.Figure(marks=[],
+        #                            axes=[self.x_axis_01_03, self.y_axis_01_04],
+        #                            animation_duration=500)
+        # # self.brush_01 = bq.BrushIntervalSelector(scale=self.x_axis_01_03)
 
 
         ####### ############# #######
 
         self.accordion_01 = ipywidgets.Accordion()
-        self.accordion_01.children = [ipywidgets.VBox([self.button_plot_01, self.fig_01_01]),
-                                      ipywidgets.VBox([self.button_diff_01, self.fig_01_02]),
-                                      ipywidgets.VBox([self.button_flag_01, self.intslider_01_01,self.fig_01_03,self.fig_01_04])]
+        # self.accordion_01.children = [ipywidgets.VBox([self.button_plot_01_01, self.fig_01_01]),
+        #                               ipywidgets.VBox([self.button_plot_01_02, self.fig_01_02]),
+        #                               ipywidgets.VBox([self.button_flag_01, self.intslider_01_01,self.fig_01_03,self.fig_01_04])]
+        self.accordion_01.children = [ipywidgets.VBox([ipywidgets.HBox([self.folder_path_01_01, self.button_showPath_01_01]),
+                                                       self.select_files_01_01,
+                                                       ipywidgets.HBox([self.dropdown_columnX_01_01, self.dropdown_columnY_01_01]),
+                                                       self.progress_01_01,
+                                                       self.button_plot_01_01,
+                                                       self.fig_01_01]),
+                                      ipywidgets.VBox([ipywidgets.HBox([self.folder_path_01_02,self.button_showPath_01_02]),
+                                                       self.select_files_01_02,
+                                                       ipywidgets.HBox([self.dropdown_columnX_01_02, self.dropdown_columnY_01_02]),
+                                                       self.button_plot_01_02,
+                                                       self.fig_01_02])]
+
 
         self.accordion_01.set_title(0, 'Simple Plot')
         self.accordion_01.set_title(1, 'Difference Plot')
-        self.accordion_01.set_title(2, 'Flag Plot')
-
+        # self.accordion_01.set_title(2, 'Flag Plot')
+        self.accordion_01.selected_index = None
 
         self.out_01 = ipywidgets.Output()
 
-        return ipywidgets.VBox([ipywidgets.HBox([self.folder_path, self.button_showPath_01]),
-                                self.select_files_01,
-                                ipywidgets.HBox([self.dropdown_columnX_01, self.dropdown_columnY_01]),
-                                self.accordion_01,self.out_01])
+        # return ipywidgets.VBox([ipywidgets.HBox([self.folder_path, self.button_showPath_01]),
+        #                         self.select_files_01,
+        #                         ipywidgets.HBox([self.dropdown_columnX_01, self.dropdown_columnY_01]),
+        #                         self.accordion_01,self.out_01])
+        return ipywidgets.VBox([self.accordion_01,
+                                self.out_01])
+
+
 
     def tab02(self):
         """ TAB02
@@ -490,20 +558,62 @@ class Viewer:
             self.lines_02_01[0].y = self.dfs_mean
             print(self.lines_02_01[0].y)
 
-    def _button_showPath01(self, *args):
+    def _button_showPath01_01(self, *args):
         """ TAB01
         Description: Given path, show files path results.
 
         """
 
         try:
-            folder_filesPath = pathlib.Path(self.folder_path.value)
+            folder_filesPath = pathlib.Path(self.folder_path_01_01.value)
             files_path = folder_filesPath.rglob('*full_output*.csv')
-            self.select_files_01.options = [i for i in files_path]
-            self.dropdown_columnX_01.options = pd.read_csv(self.select_files_01.options[0],skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]).columns.to_list()
-            self.dropdown_columnY_01.options = self.dropdown_columnX_01.options
+            self.select_files_01_01.options = [i for i in files_path]
+            self.dropdown_columnX_01_01.options = pd.read_csv(self.select_files_01_01.options[0],skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]).columns.to_list()
+            self.dropdown_columnY_01_01.options = self.dropdown_columnX_01_01.options
         except:
             pass
+
+
+    def _button_showPath01_02(self, *args):
+        """ TAB01
+        Description: Given path, show files path results.
+
+        """
+        try:
+            folder_filesPath = pathlib.Path(self.folder_path_01_02.value)
+            files_path = folder_filesPath.rglob('*full_output*.csv')
+            self.select_files_01_02.options = [i for i in files_path]
+            self.dropdown_columnX_01_02.options = pd.read_csv(self.select_files_01_02.options[0],skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]).columns.to_list()
+            self.dropdown_columnY_01_02.options = self.dropdown_columnX_01_02.options
+        except:
+            pass
+
+
+
+    def _select_observe_01_01(self, *args):
+        with self.out_01:
+
+            self.progress_01_01.value = 0
+            self.progress_01_01.bar_style = 'info'
+
+            self.scatter_01_01 = [bq.Scatter(x=[], y=[], scales={'x':self.x_scale_01_01, 'y':self.y_scale_01_01}) for i in range(len(self.select_files_01_01.value))]
+            self.fig_01_01.marks = self.scatter_01_01
+
+            self.dfs_01_01 = []
+            for i in self.select_files_01_01.value:
+                self.dfs_01_01.append(pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates={'date_time':['date', 'time']}))
+                self.progress_01_01.value += 1/len(self.select_files_01_01.value)
+
+            self.progress_01_01.bar_style = 'success'
+
+
+    def _select_observe_01_02(self, *args):
+        with self.out_01:
+            self.progress_01_02.value = 0
+            self.progress_01_01.bar_style = 'info'
+
+
+
 
     def _button_showPath02(self, *args):
         """TAB02
@@ -641,21 +751,21 @@ class Viewer:
             except:
                 print('erro')
 
-    def _button_plot01(self, *args):
+    def _button_plot_01_01(self, *args):
         """ TAB01
                 -ACCORDION01
         Description: Create list of DataFrame and feed the scatter x and y.
         """
         with self.out_01:
-            self.dfs_01 = [pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates={'date_time':['date', 'time']}) for i in self.select_files_01.value]
-            self.x_axis_01_01.label = self.dropdown_columnX_01.value
-            self.y_axis_01_01.label = self.dropdown_columnY_01.value
+            # self.dfs_01 = [pd.read_csv(i, skiprows=[0,2], na_values=-9999, parse_dates={'date_time':['date', 'time']}) for i in self.select_files_01.value]
+            self.x_axis_01_01.label = self.dropdown_columnX_01_01.value
+            self.y_axis_01_01.label = self.dropdown_columnY_01_01.value
 
-            self.tooltip_01.labels = [self.dropdown_columnX_01.value, self.dropdown_columnY_01.value]
-
-            for i, f in enumerate(self.dfs_01):
-                self.scatter_01[i].x = f['{}'.format(self.dropdown_columnX_01.value)].to_list()
-                self.scatter_01[i].y = f['{}'.format(self.dropdown_columnY_01.value)].to_list()
+            # self.tooltip_01.labels = [self.dropdown_columnX_01.value, self.dropdown_columnY_01.value]
+            # print(self.dfs_01_01)
+            for i, f in enumerate(self.dfs_01_01):
+                self.scatter_01_01[i].x = f['{}'.format(self.dropdown_columnX_01_01.value)].to_list()
+                self.scatter_01_01[i].y = f['{}'.format(self.dropdown_columnY_01_01.value)].to_list()
 
     def _button_plot02(self, *args):
         """ TAB02
@@ -736,9 +846,9 @@ class Viewer:
         Description: Create Scatter difference between SAME period. It's necessary to use _button_plot02 function.
         """
         with self.out_01:
-            self.x_axis_01_02.label = self.dropdown_columnX_01.value
-            self.y_axis_01_02.label = self.dropdown_columnY_01.value
-            self.y_axis_01_03.label = self.dropdown_columnY_01.value
+            self.x_axis_01_02.label = self.dropdown_columnX_01_02.value
+            self.y_axis_01_02.label = self.dropdown_columnY_01_02.value
+            self.y_axis_01_03.label = self.dropdown_columnY_01_02.value
 
             self.scatter_02[0].x = self.dfs_01[0]['{}'.format(self.dropdown_columnX_01.value)].to_list()
             self.scatter_02[0].y = self.dfs_01[0]['{}'.format(self.dropdown_columnY_01.value)] - self.dfs_01[1]['{}'.format(self.dropdown_columnY_01.value)]
