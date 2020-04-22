@@ -145,10 +145,11 @@ class Viewer:
         self.selectionSlider_01_01 = ipywidgets.SelectionSlider(options=[0,1,2,'All'],
                                                                 value='All',
                                                                 description='Flag')
+        self.selectionSlider_01_01.observe(self._selectionSlider_observe_01, 'value')
 
         #
         self.button_plot_01_03 = ipywidgets.Button(description='Plot')
-        # self.button_plot_01_03.on_click(self._button_flag01)
+        self.button_plot_01_03.on_click(self._button_flag01)
         #
         #
         self.x_scale_01_03 = bq.DateScale()
@@ -945,10 +946,20 @@ class Viewer:
             # self.y_axis_bar.label = 'Count'
 
             for i, f in enumerate(self.dfs_01_03):
-                self.scatter_01_03[i].x = f['{}'.format(self.dropdown_columnX_01_03.value)].to_list()
+                # self.scatter_01_03[i].x = f['{}'.format(self.dropdown_columnX_01_03.value)].to_list()
                 if self.selectionSlider_01_01.value in [0,1,2]:
-                    print('aqui')
+                    self.scatter_01_03[i].x = f.loc[f['qc_{}'.format(self.dropdown_columnY_01_03.value)]==self.selectionSlider_01_01.value, '{}'.format(self.dropdown_columnX_01_03.value)].to_list()
                     self.scatter_01_03[i].y = f.loc[f['qc_{}'.format(self.dropdown_columnY_01_03.value)]==self.selectionSlider_01_01.value, '{}'.format(self.dropdown_columnY_01_03.value)].to_list()
+                    if self.selectionSlider_01_01.value == 0:
+                        self.scatter_01_03[i].colors = ['green']
+                    if self.selectionSlider_01_01.value == 1:
+                        self.scatter_01_03[i].colors = ['yellow']
+                    if self.selectionSlider_01_01.value == 2:
+                        self.scatter_01_03[i].colors = ['red']
+
+                if self.selectionSlider_01_01.value == 'All':
+                    self.scatter_01_03[i].x = f['{}'.format(self.dropdown_columnX_01_03.value)].to_list()
+                    self.scatter_01_03[i].y = f['{}'.format(self.dropdown_columnY_01_03.value)].to_list()
 
                 # self.bar_01[i].x = [k.strftime('%H:%M') for k in f.groupby(by=f['date_time'].dt.time)['{}'.format(self.dropdown_columnY_01.value)].count().index.to_list()]
                 # self.bar_01[i].y = f.groupby(by=f['date_time'].dt.time)['{}'.format(self.dropdown_columnY_01.value)].count().to_list()
@@ -965,3 +976,22 @@ class Viewer:
 
                 self.bar_01[i].x = [k.strftime('%H:%M') for k in f.loc[f['qc_{}'.format(self.dropdown_columnY_01.value)]==self.intslider_01_01.value].groupby(by=f['date_time'].dt.time)['{}'.format(self.dropdown_columnY_01.value)].count().index.to_list()]
                 self.bar_01[i].y = f.loc[f['qc_{}'.format(self.dropdown_columnY_01.value)]==self.intslider_01_01.value].groupby(by=f['date_time'].dt.time)['{}'.format(self.dropdown_columnY_01.value)].count().to_list()
+
+    def _selectionSlider_observe_01(self, *args):
+        with self.out_01:
+            for i, f in enumerate(self.dfs_01_03):
+                # self.scatter_01_03[i].x = f['{}'.format(self.dropdown_columnX_01_03.value)].to_list()
+                if self.selectionSlider_01_01.value in [0,1,2]:
+                    self.scatter_01_03[i].x = f.loc[f['qc_{}'.format(self.dropdown_columnY_01_03.value)]==self.selectionSlider_01_01.value, '{}'.format(self.dropdown_columnX_01_03.value)].to_list()
+                    self.scatter_01_03[i].y = f.loc[f['qc_{}'.format(self.dropdown_columnY_01_03.value)]==self.selectionSlider_01_01.value, '{}'.format(self.dropdown_columnY_01_03.value)].to_list()
+                    if self.selectionSlider_01_01.value == 0:
+                        self.scatter_01_03[i].colors = ['green']
+                    if self.selectionSlider_01_01.value == 1:
+                        self.scatter_01_03[i].colors = ['yellow']
+                    if self.selectionSlider_01_01.value == 2:
+                        self.scatter_01_03[i].colors = ['red']
+
+                if self.selectionSlider_01_01.value == 'All':
+                    self.scatter_01_03[i].x = f['{}'.format(self.dropdown_columnX_01_03.value)].to_list()
+                    self.scatter_01_03[i].y = f['{}'.format(self.dropdown_columnY_01_03.value)].to_list()
+                    self.scatter_01_03[i].colors = ['blue']
