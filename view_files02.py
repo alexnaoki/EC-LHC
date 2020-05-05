@@ -224,8 +224,6 @@ class Viewer:
         return ipywidgets.VBox([self.accordion_01,
                                 self.out_01])
 
-
-
     def tab02(self):
         """ TAB02
                 -General Widgets
@@ -395,6 +393,10 @@ class Viewer:
 
         return ipywidgets.VBox([self.accordion_02,
                                 self.out_02])
+
+
+
+
 
     def _button_showPath03(self, *args):
         try:
