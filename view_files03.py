@@ -276,9 +276,11 @@ class Viewer:
                 self.scatter_03_01 = [bq.Scatter(scales={'x':self.x_scale_03_01,'y':self.y_scale_03_01})]
                 self.fig_03_01.marks = self.scatter_03_01
 
-                print(len(self.dfs_02_01))
-                print(self.dfs_concat_02_01['TIMESTAMP'].max(), self.dfs_concat_02_01['TIMESTAMP'].min())
-                print(self.dfs_concat_02_01.dtypes)
+                # print(len(self.dfs_02_01))
+                # print(self.dfs_concat_02_01['TIMESTAMP'].max(), self.dfs_concat_02_01['TIMESTAMP'].min())
+                # print(self.dfs_concat_02_01.dtypes)
+
+                self.html_02_01.value = "<table> <tr><td><span style='font-weight:bold'>Number of Files:</spam></td> <td>{}</td></tr><tr><td><span style='font-weight:bold'>Begin:</span></td> <td>{}</td></tr> <tr> <td><span style='font-weight:bold'>End:</span></td><td>{}</td>  </tr>".format(len(self.dfs_02_01), self.dfs_concat_02_01['TIMESTAMP'].min(),self.dfs_concat_02_01['TIMESTAMP'].max())
 
                 # print(self.dfs_concat_02_01)
             except:
