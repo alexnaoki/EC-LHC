@@ -12,11 +12,13 @@ import functools
 class Viewer:
     def __init__(self):
         self.time_interval_01 = 500
-        self.tabs = ipywidgets.Tab([self.tab00(), self.tab01()])
+        self.tabs = ipywidgets.Tab([self.tab00(), self.tab01(), self.tab02(), self.tab03()])
 
 
         self.tabs.set_title(0, 'EP - Master Folder')
         self.tabs.set_title(1, 'EP - Simple View')
+        self.tabs.set_title(2, 'LowFreq - Master Folder')
+        self.tabs.set_title(3, 'LowFreq - Simple View')
         display(self.tabs)
 
     def tab00(self):
@@ -92,6 +94,8 @@ class Viewer:
             self.accordion_01.set_title(0, 'Simple Plot')
             self.accordion_01.set_title(1, 'Flag Plot')
 
+            self.accordion_01.selected_index = None
+
 
 
         return ipywidgets.VBox([ipywidgets.HBox([self.dropdown_xAxis_01_01, self.dropdown_yAxis_01_01]),
@@ -99,13 +103,52 @@ class Viewer:
                                 self.accordion_01,
                                 self.out_01])
 
+    def tab02(self):
+        self.out_02 = ipywidgets.Output()
+        with self.out_02:
+            self.text_lowfreqfile_02_00 = ipywidgets.Text(placeholder='Insert the LowFreq Files Path',
+                                                          layout=ipywidgets.Layout(width='90%'))
+
+            self.button_view_lowFreq_02_00 = ipywidgets.Button(description='Apply')
+            self.button_view_lowFreq_02_00.on_click(self._button_viewLowFreq)
+
+            self.html_02_01 = ipywidgets.HTML()
+
+
+
+        return ipywidgets.VBox([ipywidgets.HBox([self.text_lowfreqfile_02_00, self.button_view_lowFreq_02_00]),
+                                self.html_02_01,
+                                self.out_02])
+
+
+    def tab03(self):
+        self.out_03 = ipywidgets.Output()
+        with self.out_03:
+            self.dropdown_xAxis_03_01 = ipywidgets.Dropdown(description='X-Axis')
+            self.dropdown_yAxis_03_01 = ipywidgets.Dropdown(description='Y-Axis')
+
+            self.button_plot_03_01 = ipywidgets.Button(description='Plot')
+            self.button_plot_03_01.on_click(self._button_plot)
+
+            self.x_scale_03_01 = bq.DateScale()
+            self.y_scale_03_01 = bq.LinearScale()
+
+            self.x_axis_03_01 = bq.Axis(scale=self.x_scale_03_01)
+            self.y_axis_03_01 = bq.Axis(scale=self.y_scale_03_01, orientation='vertical',label='tes')
+
+            self.fig_03_01 = bq.Figure(axes=[self.x_axis_03_01, self.y_axis_03_01],
+                                       animation_duration=self.time_interval_01)
+
+        return ipywidgets.VBox([ipywidgets.HBox([self.dropdown_xAxis_03_01, self.dropdown_yAxis_03_01]),
+                                self.button_plot_03_01,
+                                self.fig_03_01,
+                                self.out_03])
 
     def _selectMultiple_config(self, *args):
         with self.out_00:
             # print('asd')
             self.scatter_01_01 = []
             self.scatter_01_02 = []
-
 
             self.dfs_01_01 = []
             for i in self.selectMultiple_Meta_00_00.index:
@@ -133,7 +176,6 @@ class Viewer:
                         self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
                         self.scatter_01_02[i].y = df['{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
 
-                        # if self.selectionSlider_01_02.value == 'All':
                         self.scatter_01_02[i].colors = ['blue']
 
                     if self.selectionSlider_01_02.value in [0,1,2]:
@@ -145,9 +187,7 @@ class Viewer:
                         if self.selectionSlider_01_02.value == 1:
                             self.scatter_01_02[i].colors = ['orange']
                         if self.selectionSlider_01_02.value == 2:
-                            self.scatter_01_02[i].colors = ['red']            
-
-
+                            self.scatter_01_02[i].colors = ['red']
 
     def _button_addPathMeta(self, *args):
         if self.tabs.selected_index == 0:
@@ -168,18 +208,16 @@ class Viewer:
                     # pass
 
     def _button_plot(self, *args):
-        self.dfs = []
-        for i in self.dfs_01_01:
-            self.dfs += i
+
+        if (self.tabs.selected_index == 1):
+            self.dfs = []
+            for i in self.dfs_01_01:
+                self.dfs += i
 
         if (self.tabs.selected_index == 1) and (self.accordion_01.selected_index == 0):
             with self.out_01:
                 self.x_axis_01_01.label = self.dropdown_xAxis_01_01.value
                 self.y_axis_01_01.label = self.dropdown_yAxis_01_01.value
-
-                # dfs = []
-                # for i in self.dfs_01_01:
-                #     dfs += i
 
                 for i,df in enumerate(self.dfs):
                     with self.scatter_01_01[i].hold_sync():
@@ -191,8 +229,6 @@ class Viewer:
             with self.out_01:
                 self.x_axis_01_02.label = self.dropdown_xAxis_01_01.value
                 self.y_axis_01_02.label = self.dropdown_yAxis_01_01.value
-
-
 
                 for i,df in enumerate(self.dfs):
                     with self.scatter_01_02[i].hold_sync():
@@ -213,3 +249,37 @@ class Viewer:
                                 self.scatter_01_02[i].colors = ['orange']
                             if self.selectionSlider_01_02.value == 2:
                                 self.scatter_01_02[i].colors = ['red']
+
+        if self.tabs.selected_index == 3:
+            with self.out_03:
+                self.x_axis_03_01.label = self.dropdown_xAxis_03_01.value
+                self.y_axis_03_01.label = self.dropdown_yAxis_03_01.value
+                with self.scatter_03_01[0].hold_sync():
+                    self.scatter_03_01[0].x = self.dfs_concat_02_01['{}'.format(self.dropdown_xAxis_03_01.value)].to_list()
+                    self.scatter_03_01[0].y = self.dfs_concat_02_01['{}'.format(self.dropdown_yAxis_03_01.value)].to_list()
+
+
+    def _button_viewLowFreq(self, *args):
+        with self.out_02:
+            try:
+                self.folder_path_lf = pathlib.Path(self.text_lowfreqfile_02_00.value)
+                lf_files = self.folder_path_lf.rglob('TOA5*.flux.dat')
+                self.dfs_02_01 = []
+                for file in lf_files:
+                    self.dfs_02_01.append(pd.read_csv(file, skiprows=[0,2,3], parse_dates=['TIMESTAMP']))
+
+                self.dfs_concat_02_01 = pd.concat(self.dfs_02_01)
+
+                self.dropdown_xAxis_03_01.options = self.dfs_concat_02_01.columns.to_list()
+                self.dropdown_yAxis_03_01.options = self.dropdown_xAxis_03_01.options
+
+                self.scatter_03_01 = [bq.Scatter(scales={'x':self.x_scale_03_01,'y':self.y_scale_03_01})]
+                self.fig_03_01.marks = self.scatter_03_01
+
+                print(len(self.dfs_02_01))
+                print(self.dfs_concat_02_01['TIMESTAMP'].max(), self.dfs_concat_02_01['TIMESTAMP'].min())
+                print(self.dfs_concat_02_01.dtypes)
+
+                # print(self.dfs_concat_02_01)
+            except:
+                pass
