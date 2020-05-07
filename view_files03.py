@@ -12,13 +12,14 @@ import functools
 class Viewer:
     def __init__(self):
         self.time_interval_01 = 500
-        self.tabs = ipywidgets.Tab([self.tab00(), self.tab01(), self.tab02(), self.tab03()])
+        self.tabs = ipywidgets.Tab([self.tab00(), self.tab01(), self.tab02(), self.tab03(), self.tab04()])
 
 
         self.tabs.set_title(0, 'EP - Master Folder')
         self.tabs.set_title(1, 'EP - Simple View')
         self.tabs.set_title(2, 'LowFreq - Master Folder')
         self.tabs.set_title(3, 'LowFreq - Simple View')
+        self.tabs.set_title(4, 'Compare - EP/LF')
         display(self.tabs)
 
     def tab00(self):
@@ -134,7 +135,7 @@ class Viewer:
             self.y_scale_03_01 = bq.LinearScale()
 
             self.x_axis_03_01 = bq.Axis(scale=self.x_scale_03_01)
-            self.y_axis_03_01 = bq.Axis(scale=self.y_scale_03_01, orientation='vertical',label='tes')
+            self.y_axis_03_01 = bq.Axis(scale=self.y_scale_03_01, orientation='vertical')
 
             self.fig_03_01 = bq.Figure(axes=[self.x_axis_03_01, self.y_axis_03_01],
                                        animation_duration=self.time_interval_01)
@@ -144,33 +145,72 @@ class Viewer:
                                 self.fig_03_01,
                                 self.out_03])
 
+    def tab04(self):
+        self.out_04 = ipywidgets.Output()
+        with self.out_04:
+            self.html_04_01 = ipywidgets.HTML(value="<p>Required input at <b>EP - Master folder</b> and&nbsp;<b>LowFreq - Master folder</b>.</p>")
+
+            self.dropdown_xAxis_04_01 = ipywidgets.Dropdown(description='X-Axis (EP)')
+            self.dropdown_xAxis_04_02 = ipywidgets.Dropdown(description='X-Axis (LF)')
+
+            self.selectMultiple_04_01 = ipywidgets.SelectMultiple(description='Y-Axis (EP)')
+            self.selectMultiple_04_02 = ipywidgets.SelectMultiple(description='Y-Axis (LF)')
+
+            self.button_plot_04_01 = ipywidgets.Button(description='Plot')
+            self.button_plot_04_01.on_click(self._button_plot)
+
+            self.x_scale_04_01 = bq.DateScale()
+            self.y_scale_04_01 = bq.LinearScale()
+
+            self.x_axis_04_01 = bq.Axis(scale=self.x_scale_04_01)
+            self.y_axis_04_01 = bq.Axis(scale=self.y_scale_04_01, orientation='vertical')
+
+            self.fig_04_01 = bq.Figure(axes=[self.x_axis_04_01, self.y_axis_04_01],
+                                       animation_duration=self.time_interval_01)
+
+
+        return ipywidgets.VBox([self.html_04_01,
+                                ipywidgets.HBox([self.dropdown_xAxis_04_01, self.selectMultiple_04_01]),
+                                ipywidgets.HBox([self.dropdown_xAxis_04_02, self.selectMultiple_04_02]),
+                                self.button_plot_04_01,
+                                self.fig_04_01,
+                                self.out_04])
+
     def _selectMultiple_config(self, *args):
         with self.out_00:
             # print('asd')
             self.scatter_01_01 = []
             self.scatter_01_02 = []
 
+
+            # self.dfs_01_01 => [[partes para cada config] numero de configs]
+            # self.dfs_01_01 => agora é [numero de configs]
             self.dfs_01_01 = []
             for i in self.selectMultiple_Meta_00_00.index:
                 dfs_single_config = []
                 full_output_files = self.folder_path.rglob('*{}*_full_output*.csv'.format(self.config_name[i]))
                 for file in full_output_files:
-                    dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'date_time':['date', 'time']}))
+                    dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}))
 
-                    self.scatter_01_01.append(bq.Scatter(scales={'x':self.x_scale_01_01, 'y':self.y_scale_01_01}))
-                    self.scatter_01_02.append(bq.Scatter(scales={'x':self.x_scale_01_02, 'y':self.y_scale_01_02}))
+                dfs_concat_singleconfig = pd.concat(dfs_single_config)
+                self.scatter_01_01.append(bq.Scatter(scales={'x':self.x_scale_01_01, 'y':self.y_scale_01_01}))
+                self.scatter_01_02.append(bq.Scatter(scales={'x':self.x_scale_01_02, 'y':self.y_scale_01_02}))
 
-                self.dfs_01_01.append(dfs_single_config)
+                # self.dfs_01_01.append(dfs_single_config)
+                self.dfs_01_01.append(dfs_concat_singleconfig)
 
-                self.dropdown_xAxis_01_01.options = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates=[['date','time']]).columns.to_list()
+                self.dropdown_xAxis_01_01.options = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}).columns.to_list()
                 self.dropdown_yAxis_01_01.options = self.dropdown_xAxis_01_01.options
+
+                self.dropdown_xAxis_04_01.options = self.dropdown_xAxis_01_01.options
+                self.selectMultiple_04_01.options = self.dropdown_xAxis_01_01.options
 
             self.fig_01_01.marks = self.scatter_01_01
             self.fig_01_02.marks = self.scatter_01_02
 
     def _selectionSlider_flag(self, *args):
         with self.out_01:
-            for i,df in enumerate(self.dfs):
+            for i,df in enumerate(self.dfs_01_01):
                 with self.scatter_01_02[i].hold_sync():
                     if self.selectionSlider_01_02.value == 'All':
                         self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
@@ -209,17 +249,17 @@ class Viewer:
 
     def _button_plot(self, *args):
 
-        if (self.tabs.selected_index == 1):
-            self.dfs = []
-            for i in self.dfs_01_01:
-                self.dfs += i
+        # if (self.tabs.selected_index == 1) or (self.tabs.selected_index == 4):
+        #     self.dfs = []
+        #     for i in self.dfs_01_01:
+        #         self.dfs += i
 
         if (self.tabs.selected_index == 1) and (self.accordion_01.selected_index == 0):
             with self.out_01:
                 self.x_axis_01_01.label = self.dropdown_xAxis_01_01.value
                 self.y_axis_01_01.label = self.dropdown_yAxis_01_01.value
 
-                for i,df in enumerate(self.dfs):
+                for i,df in enumerate(self.dfs_01_01):
                     with self.scatter_01_01[i].hold_sync():
                         self.scatter_01_01[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
                         self.scatter_01_01[i].y = df['{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
@@ -230,7 +270,7 @@ class Viewer:
                 self.x_axis_01_02.label = self.dropdown_xAxis_01_01.value
                 self.y_axis_01_02.label = self.dropdown_yAxis_01_01.value
 
-                for i,df in enumerate(self.dfs):
+                for i,df in enumerate(self.dfs_01_01):
                     with self.scatter_01_02[i].hold_sync():
                         if self.selectionSlider_01_02.value == 'All':
                             self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
@@ -258,6 +298,20 @@ class Viewer:
                     self.scatter_03_01[0].x = self.dfs_concat_02_01['{}'.format(self.dropdown_xAxis_03_01.value)].to_list()
                     self.scatter_03_01[0].y = self.dfs_concat_02_01['{}'.format(self.dropdown_yAxis_03_01.value)].to_list()
 
+        if self.tabs.selected_index == 4:
+            with self.out_04:
+                self.x_axis_04_01.label = self.dropdown_xAxis_04_01.value +' and '+ self.dropdown_xAxis_04_02.value
+                self.y_axis_04_01.label = ' + '.join(self.selectMultiple_04_01.value) + ' and ' + ' + '.join(self.selectMultiple_04_02.value)
+
+                self.scatter_04_lf[0].x = self.dfs_compare[0][self.dropdown_xAxis_04_02.value].to_list()
+                self.scatter_04_lf[0].y = self.dfs_compare[0][list(self.selectMultiple_04_02.value)].sum(axis=1).to_list()
+                # print(self.scatter_04_lf)
+                # print(self.dropdown_xAxis_04_01.value)
+                # print(self.dfs_compare[0]['date_time'])
+                for i,df in enumerate(self.dfs_compare):
+                    self.scatter_04_ep[i].x = df['{}'.format(self.dropdown_xAxis_04_02.value)].to_list()
+                    self.scatter_04_ep[i].y = df[list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+                # print(df[list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
 
     def _button_viewLowFreq(self, *args):
         with self.out_02:
@@ -273,6 +327,11 @@ class Viewer:
                 self.dropdown_xAxis_03_01.options = self.dfs_concat_02_01.columns.to_list()
                 self.dropdown_yAxis_03_01.options = self.dropdown_xAxis_03_01.options
 
+                self.dropdown_xAxis_04_02.options = self.dropdown_xAxis_03_01.options
+                self.selectMultiple_04_02.options = self.dropdown_xAxis_03_01.options
+
+                self.selectMultiple_04_02.observe(self._selectMultiple_compare, 'value')
+
                 self.scatter_03_01 = [bq.Scatter(scales={'x':self.x_scale_03_01,'y':self.y_scale_03_01})]
                 self.fig_03_01.marks = self.scatter_03_01
 
@@ -285,3 +344,16 @@ class Viewer:
                 # print(self.dfs_concat_02_01)
             except:
                 pass
+
+    def _selectMultiple_compare(self, *args):
+        with self.out_04:
+            # print('teste')
+            self.scatter_04_lf = [bq.Scatter(scales={'x':self.x_scale_04_01,'y':self.y_scale_04_01}, colors=['red'])]
+            self.scatter_04_ep = [bq.Scatter(scales={'x':self.x_scale_04_01, 'y':self.y_scale_04_01}, colors=['blue']) for i in range(len(self.dfs_01_01))]
+
+            self.fig_04_01.marks = self.scatter_04_lf + self.scatter_04_ep
+            # print(self.dfs_01_01[0]['date_time'].dtypes)
+            # print(self.dfs_concat_02_01['TIMESTAMP'].dtypes)
+            self.dfs_compare = [pd.merge(self.dfs_concat_02_01, i, how='outer', on='TIMESTAMP', suffixes=("_lf", "_ep")) for i in self.dfs_01_01]
+            # print(self.dfs_compare[0].columns.to_list())
+            # print(self.dfs_compare[0][['TIMESTAMP','date_time']]).min()
