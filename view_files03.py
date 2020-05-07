@@ -165,8 +165,21 @@ class Viewer:
             self.x_axis_04_01 = bq.Axis(scale=self.x_scale_04_01)
             self.y_axis_04_01 = bq.Axis(scale=self.y_scale_04_01, orientation='vertical')
 
-            self.fig_04_01 = bq.Figure(axes=[self.x_axis_04_01, self.y_axis_04_01],
-                                       animation_duration=self.time_interval_01)
+
+            # self.brushintsel = bq.interacts.BrushIntervalSelector(scale=self.x_scale_04_01)
+
+            self.fig_04_01 = bq.Figure(axes=[self.x_axis_04_01, self.y_axis_04_01])
+
+
+
+            self.x_scale_04_02 = bq.LinearScale()
+            self.y_scale_04_02 = bq.LinearScale()
+            self.x_axis_04_02 = bq.Axis(scale=self.x_scale_04_02)
+            self.y_axis_04_02 = bq.Axis(scale=self.y_scale_04_02, orientation='vertical')
+            self.fig_04_02 = bq.Figure(axes=[self.x_axis_04_02, self.y_axis_04_02])
+
+            self.brushintsel = bq.interacts.BrushIntervalSelector(scale=self.x_scale_04_01)
+            self.brushintsel.observe(self._update,'selected')
 
 
         return ipywidgets.VBox([self.html_04_01,
@@ -174,6 +187,7 @@ class Viewer:
                                 ipywidgets.HBox([self.dropdown_xAxis_04_02, self.selectMultiple_04_02]),
                                 self.button_plot_04_01,
                                 self.fig_04_01,
+                                self.fig_04_02,
                                 self.out_04])
 
     def _selectMultiple_config(self, *args):
@@ -312,6 +326,9 @@ class Viewer:
                     self.scatter_04_ep[i].x = df['{}'.format(self.dropdown_xAxis_04_02.value)].to_list()
                     self.scatter_04_ep[i].y = df[list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
                 # print(df[list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
+        self.brushintsel.marks = self.scatter_04_lf
+        self.fig_04_01.interaction = self.brushintsel
+
 
     def _button_viewLowFreq(self, *args):
         with self.out_02:
@@ -357,3 +374,13 @@ class Viewer:
             self.dfs_compare = [pd.merge(self.dfs_concat_02_01, i, how='outer', on='TIMESTAMP', suffixes=("_lf", "_ep")) for i in self.dfs_01_01]
             # print(self.dfs_compare[0].columns.to_list())
             # print(self.dfs_compare[0][['TIMESTAMP','date_time']]).min()
+            self.scatter_04_compare = [bq.Scatter(scales={'x':self.x_scale_04_02,'y':self.y_scale_04_02})]
+            self.fig_04_02.marks = self.scatter_04_compare
+
+
+    def _update(self, *args):
+        with self.out_04:
+            # print(self.brushintsel.selected)
+            # print(self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
+            self.scatter_04_compare[0].x = self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
+            self.scatter_04_compare[0].y = self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
