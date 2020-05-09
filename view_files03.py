@@ -12,6 +12,17 @@ import functools
 class Viewer:
     def __init__(self):
         self.time_interval_01 = 500
+
+        self.ep_columns_filtered = ['date','time',  'H', 'qc_H', 'LE', 'qc_LE','sonic_temperature', 'air_temperature', 'air_pressure', 'air_density',
+ 'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed', 'max_wind_speed', 'wind_dir', 'u*', '(z-d)/L',
+  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var']
+        # self.ep_columns_all =
+
+        self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg', 'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg', 'amb_press_mean', 'Tc_mean', 'rho_a_mean','CO2_sig_strgth_mean', 'H2O_sig_strgth_mean','T_tmpr_rh_mean', 'e_tmpr_rh_mean',
+ 'e_sat_tmpr_rh_mean', 'H2O_tmpr_rh_mean', 'RH_tmpr_rh_mean',  'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg',
+ 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg', 'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'precip_Tot',
+ 'panel_tmpr_Avg',]
+
         self.tabs = ipywidgets.Tab([self.tab00(), self.tab01(), self.tab02(), self.tab03(), self.tab04()])
 
 
@@ -204,7 +215,7 @@ class Viewer:
                 dfs_single_config = []
                 full_output_files = self.folder_path.rglob('*{}*_full_output*.csv'.format(self.config_name[i]))
                 for file in full_output_files:
-                    dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}))
+                    dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}, usecols=self.ep_columns_filtered))
 
                 dfs_concat_singleconfig = pd.concat(dfs_single_config)
                 self.scatter_01_01.append(bq.Scatter(scales={'x':self.x_scale_01_01, 'y':self.y_scale_01_01}))
@@ -213,7 +224,8 @@ class Viewer:
                 # self.dfs_01_01.append(dfs_single_config)
                 self.dfs_01_01.append(dfs_concat_singleconfig)
 
-                self.dropdown_xAxis_01_01.options = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}).columns.to_list()
+                # self.dropdown_xAxis_01_01.options = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}, usecols=self.ep_columns_filtered).columns.to_list()
+                self.dropdown_xAxis_01_01.options = dfs_single_config[0].columns.to_list()
                 self.dropdown_yAxis_01_01.options = self.dropdown_xAxis_01_01.options
 
                 self.dropdown_xAxis_04_01.options = self.dropdown_xAxis_01_01.options
@@ -337,7 +349,7 @@ class Viewer:
                 lf_files = self.folder_path_lf.rglob('TOA5*.flux.dat')
                 self.dfs_02_01 = []
                 for file in lf_files:
-                    self.dfs_02_01.append(pd.read_csv(file, skiprows=[0,2,3], parse_dates=['TIMESTAMP']))
+                    self.dfs_02_01.append(pd.read_csv(file, skiprows=[0,2,3], parse_dates=['TIMESTAMP'],na_values='NAN', usecols=self.lf_columns_filtered))
 
                 self.dfs_concat_02_01 = pd.concat(self.dfs_02_01)
 
