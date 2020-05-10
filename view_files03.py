@@ -177,6 +177,7 @@ class Viewer:
             self.y_axis_04_02 = bq.Axis(scale=self.y_scale_04_02, orientation='vertical')
             self.fig_04_02 = bq.Figure(axes=[self.x_axis_04_02, self.y_axis_04_02])
 
+
             self.brushintsel = bq.interacts.BrushIntervalSelector(scale=self.x_scale_04_01)
             self.brushintsel.observe(self._update,'selected')
 
@@ -408,14 +409,22 @@ class Viewer:
             self.dfs_compare = [pd.merge(self.dfs_concat_02_01, i, how='outer', on='TIMESTAMP', suffixes=("_lf", "_ep")) for i in self.dfs_01_01]
             # print(self.dfs_compare[0].columns.to_list())
             # print(self.dfs_compare[0][['TIMESTAMP','date_time']]).min()
-            self.scatter_04_compare = [bq.Scatter(scales={'x':self.x_scale_04_02,'y':self.y_scale_04_02})]
-            self.fig_04_02.marks = self.scatter_04_compare
+            self.scatter_04_compare = [bq.Scatter(scales={'x':self.x_scale_04_02,'y':self.y_scale_04_02}, default_opacities=[0.4])]
+            self.label_corr = [bq.Label(scales={'x':self.x_scale_04_02, 'y':self.y_scale_04_02},colors=['black'], default_size=20)]
+
+            self.lines_diagonal_04 = [bq.Lines(scales={'x':self.x_scale_04_02, 'y':self.y_scale_04_02}, colors=['black'],line_style='dashed')]
+
+            self.fig_04_02.marks = self.scatter_04_compare + self.label_corr + self.lines_diagonal_04
 
 
     def _update(self, *args):
         with self.out_04:
             # print(self.brushintsel.selected)
             # print(self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
+
+            self.x_axis_04_02.label = ' + '.join(self.selectMultiple_04_01.value)
+            self.y_axis_04_02.label = ' + '.join(self.selectMultiple_04_02.value)
+
             if self.selectionSlider_flag.value == 'All':
                 time_filter_0 = (self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])
                 time_filter_1 = (self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1])
@@ -424,7 +433,16 @@ class Viewer:
                 df2 = pd.DataFrame()
                 df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
                 df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
-                print(df2.corr())
+
+                self.label_corr[0].x = [np.nanmin(self.scatter_04_compare[0].x)]
+                self.label_corr[0].y = [np.nanmax(self.scatter_04_compare[0].y)]
+                self.label_corr[0].text = ['Pearson: {:.4f}'.format(df2.corr(method='pearson')['LF'][0])]
+
+                self.lines_diagonal_04[0].x = [np.nanmin(self.scatter_04_compare[0].x), np.nanmax(self.scatter_04_compare[0].y)]
+                self.lines_diagonal_04[0].y = [np.nanmin(self.scatter_04_compare[0].x), np.nanmax(self.scatter_04_compare[0].y)]
+                # print(np.nanmin(self.scatter_04_compare[0].x))
+                # print(df2.corr())
+
 
             if self.selectionSlider_flag.value in [0,1,2]:
                 time_filter_0 = (self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])
@@ -434,7 +452,13 @@ class Viewer:
                 df2 = pd.DataFrame()
                 df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
                 df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
-                print(df2.corr())
+                # print(df2.corr()['LF'][0])
+                self.label_corr[0].x = [np.nanmin(self.scatter_04_compare[0].x)]
+                self.label_corr[0].y = [np.nanmax(self.scatter_04_compare[0].y)]
+                self.label_corr[0].text = ['Pearson: {:.4f}'.format(df2.corr(method='pearson')['LF'][0])]
+
+                self.lines_diagonal_04[0].x = [np.nanmin(self.scatter_04_compare[0].x), np.nanmax(self.scatter_04_compare[0].y)]
+                self.lines_diagonal_04[0].y = [np.nanmin(self.scatter_04_compare[0].x), np.nanmax(self.scatter_04_compare[0].y)]
             # print(self.scatter_04_compare[0].x)
             # print(self.scatter_04_compare[0].y)
             # print(np.corrcoef(x=self.scatter_04_compare[0].x,y=self.scatter_04_compare[0].y))
