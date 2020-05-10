@@ -70,37 +70,27 @@ class Viewer:
 
             self.x_scale_01_01 = bq.DateScale()
             self.y_scale_01_01 = bq.LinearScale()
-
             self.x_axis_01_01 = bq.Axis(scale=self.x_scale_01_01)
             self.y_axis_01_01 = bq.Axis(scale=self.y_scale_01_01, orientation='vertical')
-
-            # self.panZoom = bq.PanZoom(scales={'x':[self.x_scale_01_01], 'y':[self.y_scale_01_01]})
-
             self.fig_01_01 = bq.Figure(axes=[self.x_axis_01_01, self.y_axis_01_01],
                                        animation_duration=self.time_interval_01)
 
 
 
-
-
             self.x_scale_01_02 = bq.DateScale()
             self.y_scale_01_02 = bq.LinearScale()
-
             self.x_axis_01_02 = bq.Axis(scale=self.x_scale_01_02)
             self.y_axis_01_02 = bq.Axis(scale=self.y_scale_01_02, orientation='vertical')
-
             self.fig_01_02 = bq.Figure(axes=[self.x_axis_01_02, self.y_axis_01_02],
                                        animation_duration=self.time_interval_01)
 
-            self.selectionSlider_01_02 = ipywidgets.SelectionSlider(options=[0,1,2,'All'],
+            self.selectionSlider_flag = ipywidgets.SelectionSlider(options=[0,1,2,'All'],
                                                                     value='All',
                                                                     description='Flag')
-            self.selectionSlider_01_02.observe(self._selectionSlider_flag, 'value')
-
-
+            self.selectionSlider_flag.observe(self._selectionSlider_flag, 'value')
 
             self.accordion_01.children = [ipywidgets.VBox([self.fig_01_01]),
-                                          ipywidgets.VBox([self.selectionSlider_01_02,
+                                          ipywidgets.VBox([self.selectionSlider_flag,
                                                            self.fig_01_02])]
 
             self.accordion_01.set_title(0, 'Simple Plot')
@@ -167,18 +157,16 @@ class Viewer:
             self.selectMultiple_04_01 = ipywidgets.SelectMultiple(description='Y-Axis (EP)')
             self.selectMultiple_04_02 = ipywidgets.SelectMultiple(description='Y-Axis (LF)')
 
+            self.selectionSlider_flag.observe(self._selectionSlider_flag, 'value')
+
             self.button_plot_04_01 = ipywidgets.Button(description='Plot')
             self.button_plot_04_01.on_click(self._button_plot)
 
+
             self.x_scale_04_01 = bq.DateScale()
             self.y_scale_04_01 = bq.LinearScale()
-
             self.x_axis_04_01 = bq.Axis(scale=self.x_scale_04_01)
             self.y_axis_04_01 = bq.Axis(scale=self.y_scale_04_01, orientation='vertical')
-
-
-            # self.brushintsel = bq.interacts.BrushIntervalSelector(scale=self.x_scale_04_01)
-
             self.fig_04_01 = bq.Figure(axes=[self.x_axis_04_01, self.y_axis_04_01])
 
 
@@ -196,6 +184,7 @@ class Viewer:
         return ipywidgets.VBox([self.html_04_01,
                                 ipywidgets.HBox([self.dropdown_xAxis_04_01, self.selectMultiple_04_01]),
                                 ipywidgets.HBox([self.dropdown_xAxis_04_02, self.selectMultiple_04_02]),
+                                self.selectionSlider_flag,
                                 self.button_plot_04_01,
                                 self.fig_04_01,
                                 self.fig_04_02,
@@ -235,25 +224,58 @@ class Viewer:
             self.fig_01_02.marks = self.scatter_01_02
 
     def _selectionSlider_flag(self, *args):
-        with self.out_01:
-            for i,df in enumerate(self.dfs_01_01):
-                with self.scatter_01_02[i].hold_sync():
-                    if self.selectionSlider_01_02.value == 'All':
-                        self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
-                        self.scatter_01_02[i].y = df['{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
+        if (self.tabs.selected_index == 1) and (self.accordion_01.selected_index == 1):
+            with self.out_01:
+                for i,df in enumerate(self.dfs_01_01):
+                    with self.scatter_01_02[i].hold_sync():
+                        if self.selectionSlider_flag.value == 'All':
+                            self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
+                            self.scatter_01_02[i].y = df['{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
 
-                        self.scatter_01_02[i].colors = ['blue']
+                            self.scatter_01_02[i].colors = ['blue']
 
-                    if self.selectionSlider_01_02.value in [0,1,2]:
-                        self.scatter_01_02[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_01_02.value,'{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
-                        self.scatter_01_02[i].y = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_01_02.value,'{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
+                        if self.selectionSlider_flag.value in [0,1,2]:
+                            self.scatter_01_02[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_flag.value,'{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
+                            self.scatter_01_02[i].y = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_flag.value,'{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
 
-                        if self.selectionSlider_01_02.value == 0:
-                            self.scatter_01_02[i].colors = ['green']
-                        if self.selectionSlider_01_02.value == 1:
-                            self.scatter_01_02[i].colors = ['orange']
-                        if self.selectionSlider_01_02.value == 2:
-                            self.scatter_01_02[i].colors = ['red']
+                            if self.selectionSlider_flag.value == 0:
+                                self.scatter_01_02[i].colors = ['green']
+                            if self.selectionSlider_flag.value == 1:
+                                self.scatter_01_02[i].colors = ['orange']
+                            if self.selectionSlider_flag.value == 2:
+                                self.scatter_01_02[i].colors = ['red']
+
+        if (self.tabs.selected_index == 4):
+            with self.out_04:
+                qc_list = list(map(lambda x: 'qc_'+x,list(self.selectMultiple_04_01.value)))
+
+                for i, df in enumerate(self.dfs_compare):
+                    if self.selectionSlider_flag.value == 'All':
+                        with self.scatter_04_ep[i].hold_sync():
+                            self.scatter_04_ep[i].x = df['{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df[list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+
+                    if self.selectionSlider_flag.value in [0,1,2]:
+                        with self.scatter_04_ep[i].hold_sync():
+
+                            self.flag_filter = df[qc_list].isin([self.selectionSlider_flag.value]).sum(axis=1)==len(self.selectMultiple_04_01.value)
+                            # print(self.flag_filter)
+
+                            self.scatter_04_ep[i].x = df.loc[self.flag_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df.loc[self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+
+                            # self.scatter_04_ep[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_04_01.value)]==self.selectionSlider_flag.value]
+
+                # if self.selectionSlider_flag.value in ['All',0,1,2]:
+                #     with self.scatter_04_lf[0].hold_sync():
+                #         print(self.dfs_compare[0][list(self.selectMultiple_04_02.value)].sum(axis=1, min_count=1).to_list())
+                #         self.scatter_04_lf[0].x = self.dfs_compare[0][self.dropdown_xAxis_04_02.value].to_list()
+                #         self.scatter_04_lf[0].y = self.dfs_compare[0][list(self.selectMultiple_04_02.value)].sum(axis=1, min_count=1).to_list()
+
+                # if self.selectionSlider_flag.value in [0,1,2]:
+
+
+
 
     def _button_addPathMeta(self, *args):
         if self.tabs.selected_index == 0:
@@ -298,22 +320,22 @@ class Viewer:
 
                 for i,df in enumerate(self.dfs_01_01):
                     with self.scatter_01_02[i].hold_sync():
-                        if self.selectionSlider_01_02.value == 'All':
+                        if self.selectionSlider_flag.value == 'All':
                             self.scatter_01_02[i].x = df['{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
                             self.scatter_01_02[i].y = df['{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
 
-                            # if self.selectionSlider_01_02.value == 'All':
+                            # if self.selectionSlider_flag.value == 'All':
                             self.scatter_01_02[i].colors = ['blue']
 
-                        if self.selectionSlider_01_02.value in [0,1,2]:
-                            self.scatter_01_02[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_01_02.value,'{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
-                            self.scatter_01_02[i].y = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_01_02.value,'{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
+                        if self.selectionSlider_flag.value in [0,1,2]:
+                            self.scatter_01_02[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_flag.value,'{}'.format(self.dropdown_xAxis_01_01.value)].to_list()
+                            self.scatter_01_02[i].y = df.loc[df['qc_{}'.format(self.dropdown_yAxis_01_01.value)]==self.selectionSlider_flag.value,'{}'.format(self.dropdown_yAxis_01_01.value)].to_list()
 
-                            if self.selectionSlider_01_02.value == 0:
+                            if self.selectionSlider_flag.value == 0:
                                 self.scatter_01_02[i].colors = ['green']
-                            if self.selectionSlider_01_02.value == 1:
+                            if self.selectionSlider_flag.value == 1:
                                 self.scatter_01_02[i].colors = ['orange']
-                            if self.selectionSlider_01_02.value == 2:
+                            if self.selectionSlider_flag.value == 2:
                                 self.scatter_01_02[i].colors = ['red']
 
         if self.tabs.selected_index == 3:
@@ -394,5 +416,25 @@ class Viewer:
         with self.out_04:
             # print(self.brushintsel.selected)
             # print(self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
-            self.scatter_04_compare[0].x = self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
-            self.scatter_04_compare[0].y = self.dfs_compare[0].loc[(self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])&(self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1]),list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
+            if self.selectionSlider_flag.value == 'All':
+                time_filter_0 = (self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])
+                time_filter_1 = (self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1])
+                self.scatter_04_compare[0].x = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
+                self.scatter_04_compare[0].y = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
+                df2 = pd.DataFrame()
+                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
+                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
+                print(df2.corr())
+
+            if self.selectionSlider_flag.value in [0,1,2]:
+                time_filter_0 = (self.dfs_compare[0]['TIMESTAMP']>self.brushintsel.selected[0])
+                time_filter_1 = (self.dfs_compare[0]['TIMESTAMP']<self.brushintsel.selected[1])
+                self.scatter_04_compare[0].x = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
+                self.scatter_04_compare[0].y = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
+                df2 = pd.DataFrame()
+                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
+                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
+                print(df2.corr())
+            # print(self.scatter_04_compare[0].x)
+            # print(self.scatter_04_compare[0].y)
+            # print(np.corrcoef(x=self.scatter_04_compare[0].x,y=self.scatter_04_compare[0].y))
