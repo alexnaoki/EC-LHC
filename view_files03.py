@@ -18,9 +18,11 @@ class Viewer:
   'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var']
         # self.ep_columns_all =
 
-        self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg', 'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg', 'amb_press_mean', 'Tc_mean', 'rho_a_mean','CO2_sig_strgth_mean', 'H2O_sig_strgth_mean','T_tmpr_rh_mean', 'e_tmpr_rh_mean',
- 'e_sat_tmpr_rh_mean', 'H2O_tmpr_rh_mean', 'RH_tmpr_rh_mean',  'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg',
- 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg', 'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'precip_Tot',
+        self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg',
+                                    'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg', 'amb_press_mean', 'Tc_mean', 'rho_a_mean','CO2_sig_strgth_mean',
+                                    'H2O_sig_strgth_mean','T_tmpr_rh_mean', 'e_tmpr_rh_mean', 'e_sat_tmpr_rh_mean', 'H2O_tmpr_rh_mean', 'RH_tmpr_rh_mean',
+                                     'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg', 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg',
+                                      'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'precip_Tot',
  'panel_tmpr_Avg',]
 
         self.tabs = ipywidgets.Tab([self.tab00(), self.tab01(), self.tab02(), self.tab03(), self.tab04()])
@@ -159,6 +161,13 @@ class Viewer:
 
             self.selectionSlider_flag.observe(self._selectionSlider_flag, 'value')
 
+            self.floatSlider_signalStr = ipywidgets.FloatSlider(min=0, max=1, step=0.01, value=0,
+                                                                description='Strength Signal',
+                                                                continuous_update=False, redout_format='.2f')
+            self.floatSlider_signalStr.observe(self._floatSlider_signalStr, 'value')
+
+            self.checkbox_rain = ipywidgets.Checkbox(value=False, description='Filter Precipitation Periods')
+
             self.button_plot_04_01 = ipywidgets.Button(description='Plot')
             self.button_plot_04_01.on_click(self._button_plot)
 
@@ -186,6 +195,8 @@ class Viewer:
                                 ipywidgets.HBox([self.dropdown_xAxis_04_01, self.selectMultiple_04_01]),
                                 ipywidgets.HBox([self.dropdown_xAxis_04_02, self.selectMultiple_04_02]),
                                 self.selectionSlider_flag,
+                                self.floatSlider_signalStr,
+                                self.checkbox_rain,
                                 self.button_plot_04_01,
                                 self.fig_04_01,
                                 self.fig_04_02,
@@ -253,17 +264,21 @@ class Viewer:
                 for i, df in enumerate(self.dfs_compare):
                     if self.selectionSlider_flag.value == 'All':
                         with self.scatter_04_ep[i].hold_sync():
-                            self.scatter_04_ep[i].x = df['{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
-                            self.scatter_04_ep[i].y = df[list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+
+                            self.flag_filter = df[qc_list].isin([0,1,2]).sum(axis=1)==len(self.selectMultiple_04_01.value)
+                            self.str_filter = df['H2O_sig_strgth_mean'] > self.floatSlider_signalStr.value
+
+                            self.scatter_04_ep[i].x = df.loc[self.flag_filter & self.str_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df.loc[self.flag_filter & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
 
                     if self.selectionSlider_flag.value in [0,1,2]:
                         with self.scatter_04_ep[i].hold_sync():
 
                             self.flag_filter = df[qc_list].isin([self.selectionSlider_flag.value]).sum(axis=1)==len(self.selectMultiple_04_01.value)
-                            # print(self.flag_filter)
+                            self.str_filter = df['H2O_sig_strgth_mean'] > self.floatSlider_signalStr.value
 
-                            self.scatter_04_ep[i].x = df.loc[self.flag_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
-                            self.scatter_04_ep[i].y = df.loc[self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+                            self.scatter_04_ep[i].x = df.loc[self.flag_filter & self.str_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df.loc[self.flag_filter & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
 
                             # self.scatter_04_ep[i].x = df.loc[df['qc_{}'.format(self.dropdown_yAxis_04_01.value)]==self.selectionSlider_flag.value]
 
@@ -274,6 +289,30 @@ class Viewer:
                 #         self.scatter_04_lf[0].y = self.dfs_compare[0][list(self.selectMultiple_04_02.value)].sum(axis=1, min_count=1).to_list()
 
                 # if self.selectionSlider_flag.value in [0,1,2]:
+
+    def _floatSlider_signalStr(self, *args):
+        if (self.tabs.selected_index == 4):
+            with self.out_04:
+                qc_list = list(map(lambda x: 'qc_'+x,list(self.selectMultiple_04_01.value)))
+
+                for i, df in enumerate(self.dfs_compare):
+                    if self.selectionSlider_flag.value == 'All':
+                        with self.scatter_04_ep[i].hold_sync():
+
+                            self.flag_filter = df[qc_list].isin([0,1,2]).sum(axis=1)==len(self.selectMultiple_04_01.value)
+                            self.str_filter = df['H2O_sig_strgth_mean'] > self.floatSlider_signalStr.value
+
+                            self.scatter_04_ep[i].x = df.loc[self.flag_filter & self.str_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df.loc[self.flag_filter & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
+
+                    if self.selectionSlider_flag.value in [0,1,2]:
+                        with self.scatter_04_ep[i].hold_sync():
+
+                            self.flag_filter = df[qc_list].isin([self.selectionSlider_flag.value]).sum(axis=1)==len(self.selectMultiple_04_01.value)
+                            self.str_filter = df['H2O_sig_strgth_mean'] > self.floatSlider_signalStr.value
+
+                            self.scatter_04_ep[i].x = df.loc[self.flag_filter & self.str_filter,'{}'.format(self.dropdown_xAxis_04_01.value)].to_list()
+                            self.scatter_04_ep[i].y = df.loc[self.flag_filter & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
 
 
 
@@ -344,6 +383,7 @@ class Viewer:
                 self.x_axis_03_01.label = self.dropdown_xAxis_03_01.value
                 self.y_axis_03_01.label = self.dropdown_yAxis_03_01.value
                 with self.scatter_03_01[0].hold_sync():
+
                     self.scatter_03_01[0].x = self.dfs_concat_02_01['{}'.format(self.dropdown_xAxis_03_01.value)].to_list()
                     self.scatter_03_01[0].y = self.dfs_concat_02_01['{}'.format(self.dropdown_yAxis_03_01.value)].to_list()
 
@@ -431,8 +471,8 @@ class Viewer:
                 self.scatter_04_compare[0].x = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
                 self.scatter_04_compare[0].y = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
                 df2 = pd.DataFrame()
-                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
-                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
+                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
+                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.str_filter,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
 
                 self.label_corr[0].x = [np.nanmin(self.scatter_04_compare[0].x)]
                 self.label_corr[0].y = [np.nanmax(self.scatter_04_compare[0].y)]
@@ -450,8 +490,8 @@ class Viewer:
                 self.scatter_04_compare[0].x = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list()
                 self.scatter_04_compare[0].y = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1).to_list()
                 df2 = pd.DataFrame()
-                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
-                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter ,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
+                df2['EP'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter & self.str_filter,list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1)
+                df2['LF'] = self.dfs_compare[0].loc[time_filter_0 & time_filter_1 & self.flag_filter & self.str_filter,list(self.selectMultiple_04_02.value)].sum(axis=1,min_count=1)
                 # print(df2.corr()['LF'][0])
                 self.label_corr[0].x = [np.nanmin(self.scatter_04_compare[0].x)]
                 self.label_corr[0].y = [np.nanmax(self.scatter_04_compare[0].y)]
