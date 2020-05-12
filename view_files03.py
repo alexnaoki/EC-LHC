@@ -401,8 +401,8 @@ class Viewer:
                     self.scatter_04_ep[i].x = df['{}'.format(self.dropdown_xAxis_04_02.value)].to_list()
                     self.scatter_04_ep[i].y = df[list(self.selectMultiple_04_01.value)].sum(axis=1, min_count=1).to_list()
                 # print(df[list(self.selectMultiple_04_01.value)].sum(axis=1,min_count=1).to_list())
-        self.brushintsel.marks = self.scatter_04_lf
-        self.fig_04_01.interaction = self.brushintsel
+            self.brushintsel.marks = self.scatter_04_lf
+            self.fig_04_01.interaction = self.brushintsel
 
 
     def _button_viewLowFreq(self, *args):
