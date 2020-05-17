@@ -2,9 +2,10 @@ import ipywidgets
 import numpy as np
 import pandas as pd
 import pathlib
+from scipy.stats import linregress
 from bokeh.io import push_notebook, show, output_notebook
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, RangeTool, Circle, Slope, Label
+from bokeh.models import ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem
 from bokeh.layouts import gridplot, column, row
 
 
@@ -22,7 +23,7 @@ class view_files:
                                     'H2O_sig_strgth_mean','T_tmpr_rh_mean', 'e_tmpr_rh_mean', 'e_sat_tmpr_rh_mean', 'H2O_tmpr_rh_mean', 'RH_tmpr_rh_mean',
                                      'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg', 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg',
                                       'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'precip_Tot', 'panel_tmpr_Avg']
-        self.TOOLS="pan,wheel_zoom,box_select,lasso_select,reset"
+        self.TOOLS="pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
 
         output_notebook()
 
@@ -34,31 +35,36 @@ class view_files:
         self.tabs.set_title(2, 'Plot')
 
         self.source_ep = ColumnDataSource(data=dict(x=[], y=[], y2=[]))
-        self.source_lf = ColumnDataSource(data=dict(x=[], y=[], y2=[]))
-        self.source_merged = ColumnDataSource(data=dict(x=[], y=[]))
 
         self.fig_01 = figure(title='EP', plot_height=250, plot_width=700, x_axis_type='datetime', tools=self.TOOLS)
         circle_ep = self.fig_01.circle(x='x', y='y', source=self.source_ep)
 
 
         self.fig_02 = figure(title='LF', plot_height=250, plot_width=700, x_axis_type='datetime', x_range=self.fig_01.x_range)
-        # circle_lf = self.fig_02.circle(x='x', y='y', source=self.source_lf, color='red')
         circle_lf = self.fig_02.circle(x='x', y='y2', source=self.source_ep, color='red')
 
         self.fig_03 = figure(title='EP x LF',plot_height=500, plot_width=500)
-        circle_teste = self.fig_03.circle(x='y', y='y2', source=self.source_ep, color='green', selection_color="green",nonselection_fill_alpha=0.2,nonselection_fill_color="grey",nonselection_line_color="grey",nonselection_line_alpha=0.2)
+        circle_teste = self.fig_03.circle(x='y2', y='y', source=self.source_ep, color='green', selection_color="green",selection_fill_alpha=0.3, selection_line_alpha=0.3,
+                                          nonselection_fill_alpha=0.1,nonselection_fill_color="grey",nonselection_line_color="grey",nonselection_line_alpha=0.1)
         # selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
         # nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color="firebrick")
         self.label = Label(x=1.1, y=18, text='teste', text_color='black')
+        self.label2 = Label(x=1.1, y=10, text='teste2', text_color='black')
+        self.label3 = Label(x=1.2, y=11, text='teste3', text_color='black')
         self.fig_03.add_layout(self.label)
-
+        self.fig_03.add_layout(self.label2)
+        self.fig_03.add_layout(self.label3)
         # self.label_teste = Label(x=0,y=0, text='fasdfasdfasdfasdfas', text_color='black')
         # self.fig_03.add_layout(self.label_teste)
 
         # self.source_ep.selected.on_change('indices', self.selection_change)
+        # slope11_l = self.fig_03.line(color='orange', line_dash='dashed')
+        slope_11 = Slope(gradient=1, y_intercept=0, line_color='orange', line_dash='dashed', line_width=3)
+        self.fig_03.add_layout(slope_11)
 
-        slope = Slope(gradient=1, y_intercept=0, line_color='orange', line_dash='dashed', line_width=3)
-        self.fig_03.add_layout(slope)
+        # self.slope_lin_label = self.fig_03.line(color='red', line_width=3)
+        self.slope_linregress = Slope(gradient=1.3, y_intercept=0,line_color='red', line_width=3)
+        self.fig_03.add_layout(self.slope_linregress)
 
         c = column([self.fig_01, self.fig_02])
 
@@ -110,21 +116,30 @@ class view_files:
             self.checkBox_EnergyBalance = ipywidgets.Checkbox(value=False, description='Energy Balance')
 
 
-            self.intSlider_flagFilter = ipywidgets.IntSlider(value=2, min=0, max=2, step=1, description='Flag Filter')
+            # self.intSlider_flagFilter = ipywidgets.IntSlider(value=2, min=0, max=2, step=1, description='Flag Filter')
+            self.selectionSlider_flagFilter = ipywidgets.SelectionSlider(options=[0,1,2,'All'], value='All', description='Flag Filter')
+
 
             self.checkBox_rainfallFilter = ipywidgets.Checkbox(value=False, description='Rainfall Filter')
 
             self.floatSlider_signalStrFilter = ipywidgets.FloatSlider(value=0, min=0, max=1, step=0.01, description='Signal Str Filter')
+
+            self.selectionRangeSlider_date = ipywidgets.SelectionRangeSlider(options=[0,1], description='Date Range', layout=ipywidgets.Layout(width='500px'))
+
+            self.selectionRangeSlider_hour = ipywidgets.SelectionRangeSlider(options=[0,1], description='Hour Range', layout=ipywidgets.Layout(width='500px'))
+
 
             self.button_plot = ipywidgets.Button(description='Plot')
             # self.button_plot.on_click(self.update_ep)
             self.button_plot.on_click(self._button_plot)
 
             controls_ep = [self.dropdown_yAxis_ep,
-                           self.intSlider_flagFilter,
+                           self.selectionSlider_flagFilter,
                            self.checkBox_rainfallFilter,
                            self.floatSlider_signalStrFilter,
-                           self.checkBox_EnergyBalance]
+                           self.checkBox_EnergyBalance,
+                           self.selectionRangeSlider_date,
+                           self.selectionRangeSlider_hour]
             for control in controls_ep:
                 control.observe(self.update_ep, 'value')
 
@@ -134,7 +149,9 @@ class view_files:
                 control.observe(self.update_ep, 'value')
 
             return ipywidgets.VBox([ipywidgets.HBox([self.dropdown_yAxis_ep, self.dropdown_yAxis_lf, self.checkBox_EnergyBalance]),
-                                    ipywidgets.HBox([self.intSlider_flagFilter, self.checkBox_rainfallFilter, self.floatSlider_signalStrFilter]),
+                                    ipywidgets.HBox([self.selectionSlider_flagFilter, self.checkBox_rainfallFilter, self.floatSlider_signalStrFilter]),
+                                    self.selectionRangeSlider_date,
+                                    self.selectionRangeSlider_hour,
                                     self.button_plot])
 
 
@@ -192,34 +209,35 @@ class view_files:
 
 
     def filter_flag_ep(self):
-        # flag = self.df_ep[self.df_ep['qc_{}'.format(self.dropdown_yAxis_ep.value)]==self.intSlider_flagFilter.value]
-        # flag = self.dfs_compare[self.dfs_compare['qc_{}'.format(self.dropdown_yAxis_ep.value)]==self.intSlider_flagFilter.value]
+        try:
+            flag = self.dfs_compare[
+                (self.dfs_compare['H2O_sig_strgth_mean'] >= self.floatSlider_signalStrFilter.value) &
+                (self.dfs_compare['TIMESTAMP'].dt.date >= self.selectionRangeSlider_date.value[0]) &
+                (self.dfs_compare['TIMESTAMP'].dt.date <= self.selectionRangeSlider_date.value[1]) &
+                (self.dfs_compare['TIMESTAMP'].dt.time >= self.selectionRangeSlider_hour.value[0]) &
+                (self.dfs_compare['TIMESTAMP'].dt.time <= self.selectionRangeSlider_hour.value[1])
+            ]
+        except:
+            flag = self.dfs_compare[
+                (self.dfs_compare['H2O_sig_strgth_mean'] >= self.floatSlider_signalStrFilter.value)
+            ]
+
+        if self.checkBox_rainfallFilter.value == True:
+            flag = flag[flag['precip_Tot']==0]
+
         if self.checkBox_EnergyBalance.value == True:
-            if self.checkBox_rainfallFilter.value == False:
-                flag = self.dfs_compare[
-                    (self.dfs_compare[['qc_H', 'qc_LE']].isin([self.intSlider_flagFilter.value]).sum(axis=1)==2) &
-                    (self.dfs_compare['H2O_sig_strgth_mean'] > self.floatSlider_signalStrFilter.value)
-                ]
-            if self.checkBox_rainfallFilter.value == True:
-                flag = self.dfs_compare[
-                    (self.dfs_compare[['qc_H', 'qc_LE']].isin([self.intSlider_flagFilter.value]).sum(axis=1)==2) &
-                    (self.dfs_compare['H2O_sig_strgth_mean'] > self.floatSlider_signalStrFilter.value) &
-                    (self.dfs_compare['precip_Tot']==0)
-                ]
+            if self.selectionSlider_flagFilter.value in [0,1,2]:
+                flag = flag[flag[['qc_H', 'qc_LE']].isin([self.selectionSlider_flagFilter.value]).sum(axis=1)==2]
+            if self.selectionSlider_flagFilter.value == 'All':
+                pass
 
         if self.checkBox_EnergyBalance.value == False:
-            if self.checkBox_rainfallFilter.value == False:
-                flag = self.dfs_compare[
-                    (self.dfs_compare['qc_{}'.format(self.dropdown_yAxis_ep.value)]==self.intSlider_flagFilter.value) &
-                    (self.dfs_compare['H2O_sig_strgth_mean'] > self.floatSlider_signalStrFilter.value)
-                    ]
+            if self.selectionSlider_flagFilter.value in [0,1,2]:
+                flag = flag[flag['qc_{}'.format(self.dropdown_yAxis_ep.value)]==self.selectionSlider_flagFilter.value]
+                if self.selectionSlider_flagFilter.value == 'All':
+                    pass
 
-            if self.checkBox_rainfallFilter.value == True:
-                flag = self.dfs_compare[
-                    (self.dfs_compare['qc_{}'.format(self.dropdown_yAxis_ep.value)]==self.intSlider_flagFilter.value) &
-                    (self.dfs_compare['precip_Tot']==0) &
-                    (self.dfs_compare['H2O_sig_strgth_mean'] > self.floatSlider_signalStrFilter.value)
-                    ]
+
 
         return flag
 
@@ -227,8 +245,12 @@ class view_files:
     def _button_plot(self, *args):
         with self.out_02:
             self.dfs_compare = pd.merge(left=self.dfs_concat_02_01, right=self.df_ep, how='outer', on='TIMESTAMP', suffixes=("_lf","_ep"))
+
+            self.selectionRangeSlider_date.options = self.dfs_compare['TIMESTAMP'].dt.date.unique()
+            self.selectionRangeSlider_hour.options = sorted(list(self.dfs_compare['TIMESTAMP'].dt.time.unique()))
             # print(self.dfs_compare)
             # self.update_lf()
+            # self.slope_linregress.gradient = 5
             self.update_ep()
 
     def update_ep(self, *args):
@@ -241,24 +263,48 @@ class view_files:
         if self.checkBox_EnergyBalance.value == True:
             self.source_ep.data = dict(x=self.df_filter_ep['TIMESTAMP'],
                                        y=self.df_filter_ep[['H', 'LE']].sum(axis=1, min_count=1),
-                                       y2=self.df_filter_ep[['Rn_Avg', 'shf_Avg(1)']].sum(axis=1, min_count=1))
+                                       y2=self.df_filter_ep['Rn_Avg']-self.df_filter_ep['shf_Avg(2)'])
+            #self.df_filter_ep[['Rn_Avg', 'shf_Avg(1)']].sum(axis=1, min_count=1)
+            #
             self.fig_01.xaxis.axis_label = 'TIMESTAMP'
             self.fig_01.yaxis.axis_label = 'H + LE'
 
             self.fig_02.xaxis.axis_label = 'TIMESTAMP'
-            self.fig_02.yaxis.axis_label = 'Rn + G'
+            self.fig_02.yaxis.axis_label = 'Rn - G'
 
-            self.fig_03.xaxis.axis_label = 'H + LE'
-            self.fig_03.yaxis.axis_label = 'Rn + G'
+            self.fig_03.yaxis.axis_label = 'H + LE'
+            self.fig_03.xaxis.axis_label = 'Rn - G'
 
             # self.label.text = 'fasfdasfasfasfaf'
 
             self.df_corr = pd.DataFrame()
             self.df_corr['EP'] = self.df_filter_ep[['H','LE']].sum(axis=1, min_count=1)
-            self.df_corr['LF'] = self.df_filter_ep[['Rn_Avg', 'shf_Avg(1)']].sum(axis=1, min_count=1)
+            # self.df_corr['LF'] = self.df_filter_ep[['Rn_Avg', 'shf_Avg(2)']].sum(axis=1, min_count=1)
+            self.df_corr['LF'] = self.df_filter_ep['Rn_Avg']-self.df_filter_ep['shf_Avg(2)']
             self.label.text = 'Pearson: {:.4f}'.format(self.df_corr.corr(method='pearson')['LF'][0])
-            self.label.x = np.nanmin(self.df_corr['EP'])
-            self.label.y = np.nanmax(self.df_corr['LF'])
+            self.df_corr.dropna(inplace=True)
+            # linear_regression = linregress(y=self.df_corr['EP'], x=self.df_corr['LF'])
+            x = np.array(self.df_corr['LF'].to_list())
+            x1 = x[:, np.newaxis]
+            fit_linear = np.linalg.lstsq(x1, self.df_corr['EP'], rcond=None)
+
+            self.slope_linregress.gradient = fit_linear[0][0]
+
+            self.label2.text = 'Slope: {:.4f}'.format(fit_linear[0][0])
+            # self.label2.text = 'R: {:.4f} '.format(linear_regression[2])
+            self.label.x = np.nanmin(self.df_corr['LF'])
+            self.label.y = np.nanmax(self.df_corr['EP'])
+            self.label2.x = np.nanmin(self.df_corr['LF'])
+            self.label2.y = np.nanmax(self.df_corr['EP']-0.1*np.nanmax(self.df_corr['EP']))
+            self.label3.x = np.nanmin(self.df_corr['LF'])
+            self.label3.y = np.nanmax(self.df_corr['EP']-0.2*np.nanmax(self.df_corr['EP']))
+            # self.slope_linregress.gradient = linear_regression[0]
+            # self.slope_linregress.y_intercept = linear_regression[1]
+            self.label3.text = 'ET: {:.2f}'.format(self.df_filter_ep['ET'].sum()/2)
+            # self.label3.text = 'y = {:.4f}x + {:.4f}'.format(linear_regression[0], linear_regression[1])
+
+            # self.slope_lin_label.legend_label = 'ok'
+            # self.legend_fig03[0].label='ok'
 
         if self.checkBox_EnergyBalance.value == False:
 
