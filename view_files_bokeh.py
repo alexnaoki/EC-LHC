@@ -5,8 +5,9 @@ import pathlib
 from scipy.stats import linregress
 from bokeh.io import push_notebook, show, output_notebook
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem
+from bokeh.models import ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem, LinearColorMapper
 from bokeh.layouts import gridplot, column, row
+from bokeh.transform import transform
 
 
 
@@ -16,7 +17,7 @@ class view_files:
 
         self.ep_columns_filtered = ['date','time',  'H', 'qc_H', 'LE', 'qc_LE','sonic_temperature', 'air_temperature', 'air_pressure', 'air_density',
  'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed', 'max_wind_speed', 'wind_dir', 'u*', '(z-d)/L',
-  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var']
+  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var','H_strg','LE_strg']
 
         self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg',
                                     'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg', 'amb_press_mean', 'Tc_mean', 'rho_a_mean','CO2_sig_strgth_mean',
@@ -34,7 +35,7 @@ class view_files:
         self.tabs.set_title(1, 'LowFreq - Master Folder')
         self.tabs.set_title(2, 'Plot')
 
-        self.source_ep = ColumnDataSource(data=dict(x=[], y=[], y2=[]))
+        self.source_ep = ColumnDataSource(data=dict(x=[], y=[], y2=[], date=[],time=[],et=[]))
 
         self.fig_01 = figure(title='EP', plot_height=250, plot_width=700, x_axis_type='datetime', tools=self.TOOLS)
         circle_ep = self.fig_01.circle(x='x', y='y', source=self.source_ep)
@@ -46,14 +47,23 @@ class view_files:
         self.fig_03 = figure(title='EP x LF',plot_height=500, plot_width=500)
         circle_teste = self.fig_03.circle(x='y2', y='y', source=self.source_ep, color='green', selection_color="green",selection_fill_alpha=0.3, selection_line_alpha=0.3,
                                           nonselection_fill_alpha=0.1,nonselection_fill_color="grey",nonselection_line_color="grey",nonselection_line_alpha=0.1)
-        # selected_circle = Circle(fill_alpha=1, fill_color="firebrick", line_color=None)
-        # nonselected_circle = Circle(fill_alpha=0.2, fill_color="blue", line_color="firebrick")
+
+        # self.fig_04 = figure(title='ET', plot_width=1200, plot_height=600)
+        # colors = ['#440154', '#404387', '#29788E', '#22A784', '#79D151', '#FDE724']
+        # self.colorMapper = LinearColorMapper(palette=colors)
+        # self.fig_04.rect(source=self.source_ep, x='date',y='time', fill_color=transform('et', self.colorMapper), line_color=None, width=1,height=1)
+        # self.hm = self.fig_04.rect(source=self.source_ep, x='date',y='time', line_color=None, width=1,height=1)
+
         self.label = Label(x=1.1, y=18, text='teste', text_color='black')
         self.label2 = Label(x=1.1, y=10, text='teste2', text_color='black')
         self.label3 = Label(x=1.2, y=11, text='teste3', text_color='black')
+        self.label4 = Label(x=1,y=11, text='teste4', text_color='black')
+        # self.label5 = Label(x=1, y=11, text='teste5', text_color='black')
         self.fig_03.add_layout(self.label)
         self.fig_03.add_layout(self.label2)
         self.fig_03.add_layout(self.label3)
+        self.fig_03.add_layout(self.label4)
+        # self.fig_03.add_layout(self.label5)
         # self.label_teste = Label(x=0,y=0, text='fasdfasdfasdfasdfas', text_color='black')
         # self.fig_03.add_layout(self.label_teste)
 
@@ -197,7 +207,7 @@ class view_files:
             full_output_files = self.folder_path_ep.rglob('*{}*_full_output*.csv'.format(self.config_name[self.select_meta.index]))
             dfs_single_config = []
             for file in full_output_files:
-                dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}, usecols=self.ep_columns_filtered))
+                dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']},keep_date_col=True, usecols=self.ep_columns_filtered))
 
                 # self.df_ep = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']}, usecols=self.ep_columns_filtered)
             self.df_ep = pd.concat(dfs_single_config)
@@ -217,6 +227,8 @@ class view_files:
                 (self.dfs_compare['TIMESTAMP'].dt.time >= self.selectionRangeSlider_hour.value[0]) &
                 (self.dfs_compare['TIMESTAMP'].dt.time <= self.selectionRangeSlider_hour.value[1])
             ]
+
+
         except:
             flag = self.dfs_compare[
                 (self.dfs_compare['H2O_sig_strgth_mean'] >= self.floatSlider_signalStrFilter.value)
@@ -262,10 +274,11 @@ class view_files:
 
         if self.checkBox_EnergyBalance.value == True:
             self.source_ep.data = dict(x=self.df_filter_ep['TIMESTAMP'],
-                                       y=self.df_filter_ep[['H', 'LE']].sum(axis=1, min_count=1),
-                                       y2=self.df_filter_ep['Rn_Avg']-self.df_filter_ep['shf_Avg(2)'])
+                                       y=self.df_filter_ep[['H', 'LE','H_strg','LE_strg']].sum(axis=1, min_count=1),
+                                       y2=self.df_filter_ep['Rn_Avg']-self.df_filter_ep[['shf_Avg(1)','shf_Avg(2)']].mean(axis=1))
+            # self.hm.fill_color=transform('et', self.colorMapper)
             #self.df_filter_ep[['Rn_Avg', 'shf_Avg(1)']].sum(axis=1, min_count=1)
-            #
+            #self.df_filter_ep[['H', 'LE']].sum(axis=1, min_count=1)
             self.fig_01.xaxis.axis_label = 'TIMESTAMP'
             self.fig_01.yaxis.axis_label = 'H + LE'
 
@@ -275,19 +288,27 @@ class view_files:
             self.fig_03.yaxis.axis_label = 'H + LE'
             self.fig_03.xaxis.axis_label = 'Rn - G'
 
+            # self.fig_04.x_range.factors = self.df_filter_ep['date'].unique()
+            # self.fig_04.y_range.factors = self.df_filter_ep['time'].unique()
             # self.label.text = 'fasfdasfasfasfaf'
 
             self.df_corr = pd.DataFrame()
             self.df_corr['EP'] = self.df_filter_ep[['H','LE']].sum(axis=1, min_count=1)
+            self.df_corr['EP'] = self.df_filter_ep[['H','LE','H_strg','LE_strg']].sum(axis=1, min_count=1)
             # self.df_corr['LF'] = self.df_filter_ep[['Rn_Avg', 'shf_Avg(2)']].sum(axis=1, min_count=1)
-            self.df_corr['LF'] = self.df_filter_ep['Rn_Avg']-self.df_filter_ep['shf_Avg(2)']
+            self.df_corr['LF'] = self.df_filter_ep['Rn_Avg']-self.df_filter_ep[['shf_Avg(1)','shf_Avg(2)']].mean(axis=1)
             self.label.text = 'Pearson: {:.4f}'.format(self.df_corr.corr(method='pearson')['LF'][0])
             self.df_corr.dropna(inplace=True)
-            # linear_regression = linregress(y=self.df_corr['EP'], x=self.df_corr['LF'])
+            # linear_regression = linregress(x=self.df_corr['LF'], y=self.df_corr['EP'])
+            linear_regression = linregress(x=self.df_corr['LF'], y=self.df_corr['EP'])
+
             x = np.array(self.df_corr['LF'].to_list())
             x1 = x[:, np.newaxis]
             fit_linear = np.linalg.lstsq(x1, self.df_corr['EP'], rcond=None)
 
+            # pbias = 100*(self.df_corr['EP']-self.df_corr['LF']).sum()/self.df_corr['LF'].sum()
+
+            # self.label5.text = 'PBIAS: {:.4f}'.format(pbias)
             self.slope_linregress.gradient = fit_linear[0][0]
 
             self.label2.text = 'Slope: {:.4f}'.format(fit_linear[0][0])
@@ -298,10 +319,15 @@ class view_files:
             self.label2.y = np.nanmax(self.df_corr['EP']-0.1*np.nanmax(self.df_corr['EP']))
             self.label3.x = np.nanmin(self.df_corr['LF'])
             self.label3.y = np.nanmax(self.df_corr['EP']-0.2*np.nanmax(self.df_corr['EP']))
+            self.label4.x = np.nanmin(self.df_corr['LF'])
+            self.label4.y = np.nanmax(self.df_corr['EP']-0.3*np.nanmax(self.df_corr['EP']))
+            # self.label5.x = np.nanmin(self.df_corr['LF'])
+            # self.label5.y = np.nanmax(self.df_corr['EP']-0.4*np.nanmax(self.df_corr['EP']))
+
             # self.slope_linregress.gradient = linear_regression[0]
             # self.slope_linregress.y_intercept = linear_regression[1]
             self.label3.text = 'ET: {:.2f}'.format(self.df_filter_ep['ET'].sum()/2)
-            # self.label3.text = 'y = {:.4f}x + {:.4f}'.format(linear_regression[0], linear_regression[1])
+            self.label4.text = 'y = {:.4f}x + {:.4f}'.format(linear_regression[0], linear_regression[1])
 
             # self.slope_lin_label.legend_label = 'ok'
             # self.legend_fig03[0].label='ok'
