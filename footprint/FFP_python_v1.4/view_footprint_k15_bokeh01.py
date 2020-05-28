@@ -1,7 +1,7 @@
 from bokeh.io import show, output_file, curdoc
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot, column, row
-from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d
+from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div
 
 from calc_footprint_FFP_adjusted01 import FFP
 import numpy as np
@@ -10,7 +10,7 @@ import datetime as dt
 
 class view_k15:
     def __init__(self):
-
+        # output_file('teste_footprint')
         self.a = FFP()
         # output = a.output(zm=9., umean=2, h=5000, ol=-1000, sigmav=0.6, ustar=0.3, wind_dir=210,rs= [0.3,0.5,0.9],crop=False, fig=False)
         # print(output[8])
@@ -28,11 +28,15 @@ class view_k15:
 
         file = r'C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01\eddypro_p00_fase01_full_output_2020-05-02T040616_adv.csv'
         self.df = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date','time']})
+        self.adjust_wind_direction()
+
 
         self.source_02 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
 
         self.datetime_slider = DateSlider(title='Datetime', start=self.df['TIMESTAMP'].min(), end=self.df['TIMESTAMP'].max(), value=self.df['TIMESTAMP'].min(), step=1000*60*30, format='%x %X')
         self.datetime_slider.on_change('value_throttled', lambda attr,old, new: self.update())
+
+        self.div_inputs = Div(text='Sem dados', width=500)
 
         fig02 = figure(title='FullOutput', plot_height=500, plot_width=500)
         fig02.x_range = Range1d(-1000,1000)
@@ -40,9 +44,8 @@ class view_k15:
         mlines02 = fig02.multi_line(xs='xrs', ys='yrs', source=self.source_02)
 
 
-
-        curdoc().add_root(row(column(self.tabs,fig01), column(self.datetime_slider, fig02)))
-
+        curdoc().add_root(row(column(self.tabs,fig01), column(self.datetime_slider, self.div_inputs, fig02)))
+        # show(column(self.tabs,fig01))
 
     def tab_01(self):
         self.slider_zm = Slider(title='zm', start=0, end=20, step=0.1, value=1)
@@ -84,13 +87,44 @@ class view_k15:
 
         self.source.data = dict(xrs=out[8], yrs=out[9])
 
+    def adjust_wind_direction(self):
+        self.df['wind_dir_sonic'] = 360 - self.df['wind_dir']
+        azimute = 135.1
+        self.df['wind_dir_compass'] = (360 + azimute - self.df['wind_dir_sonic']).apply(lambda x: x-360 if x>=360 else x)
+
     def update(self):
         datetime = dt.datetime.utcfromtimestamp(self.datetime_slider.value/1000)
         # print(datetime)
 
-        inputs = self.df.loc[self.df['TIMESTAMP']==datetime, ['u_rot','L','u*','v_var','wind_dir']]
+        inputs = self.df.loc[self.df['TIMESTAMP']==datetime, ['u_rot','L','u*','v_var','wind_dir_compass']]
         # print(inputs.value)
         print(inputs)
+        self.div_inputs.text = '''
+<table border="2"><tbody><tr>
+			<td>&nbsp;zm</td>
+			<td>umean</td>
+			<td>h</td>
+			<td>ol</td>
+			<td>sigmav</td>
+			<td>ustar</td>
+			<td>wind_dir_compass</td>
+		</tr><tr>
+			<td>&nbsp;{}</td>
+			<td>{}&nbsp;</td>
+			<td>{}</td>
+			<td>{}</td>
+			<td>{}</td>
+			<td>{}</td>
+			<td>&nbsp;{}</td>
+		</tr></tbody></table>
+        '''.format(9,
+                   inputs['u_rot'].values[0],
+                   1000,
+                   inputs['L'].values[0],
+                   inputs['v_var'].values[0],
+                   inputs['u*'].values[0],
+                   inputs['wind_dir_compass'].values[0]
+                   )
 
         out = self.a.output(zm=9,
                             umean=inputs['u_rot'].values[0],
@@ -98,7 +132,7 @@ class view_k15:
                             ol=inputs['L'].values[0],
                             sigmav=inputs['v_var'].values[0],
                             ustar=inputs['u*'].values[0],
-                            wind_dir=inputs['wind_dir'].values[0],
+                            wind_dir=inputs['wind_dir_compass'].values[0],
                             rs=[0.3, 0.9], crop=False, fig=False)
 
         self.source_02.data = dict(xrs=out[8], yrs=out[9])
