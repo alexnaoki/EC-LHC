@@ -3,6 +3,9 @@ from bokeh.plotting import figure
 from bokeh.layouts import gridplot, column, row
 from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel
 
+import sys, pathlib
+sys.path.append(str(pathlib.Path(sys.path[0]).parent/'footprint'/'FFP_python_v1_4'))
+
 from calc_footprint_FFP_adjusted01 import FFP
 import numpy as np
 import pandas as pd

@@ -3,11 +3,13 @@ from bokeh.plotting import figure
 from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel, DateRangeSlider
 from bokeh.layouts import column, row
 
+import sys, pathlib
+sys.path.append(str(pathlib.Path(sys.path[0]).parent/'footprint'/'FFP_python_v1_4'))
+
 from calc_footprint_FFP_adjusted01 import FFP
 from calc_footprint_FFP_climatology_adjusted01 import FFP_climatology
 import numpy as np
 import pandas as pd
-import pathlib
 import datetime as dt
 
 class view_k15:

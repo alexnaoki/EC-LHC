@@ -62,7 +62,7 @@ class teste01:
         ######
 
         # Figure 04 (ET)
-        x_range_date = [(dt.datetime(2018,1,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
+        x_range_date = [(dt.datetime(2018,4,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
         y_range_time = [(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).time().strftime('%H:%M') for i in range(48)]
         self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_range=x_range_date, y_range=y_range_time)
         colors = ['#440154', '#404387', '#29788E', '#22A784', '#79D151', '#FDE724']
