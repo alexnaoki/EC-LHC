@@ -1,7 +1,7 @@
 from bokeh.io import show, output_file, curdoc
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot, column, row
-from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div
+from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel
 
 from calc_footprint_FFP_adjusted01 import FFP
 import numpy as np
@@ -10,26 +10,18 @@ import datetime as dt
 
 class view_k15:
     def __init__(self):
-        # output_file('teste_footprint')
         self.a = FFP()
-        # output = a.output(zm=9., umean=2, h=5000, ol=-1000, sigmav=0.6, ustar=0.3, wind_dir=210,rs= [0.3,0.5,0.9],crop=False, fig=False)
-        # print(output[8])
 
         self.tabs = Tabs(tabs=[self.tab_01()])
-
-
-        # datetime_slider = DateSlider(title='Datetime', start=dt.datetime())
 
         self.source = ColumnDataSource(data=dict(xrs=[[1,2,3],[10,11,12]], yrs=[[1,2,3],[5,3,2]]))
 
         fig01 = figure(title='K15', plot_height=500, plot_width=500)
         mlines = fig01.multi_line(xs='xrs',ys='yrs', source=self.source)
 
-
         file = r'C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01\eddypro_p00_fase01_full_output_2020-05-02T040616_adv.csv'
         self.df = pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date','time']})
         self.adjust_wind_direction()
-
 
         self.source_02 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
 
@@ -43,9 +35,7 @@ class view_k15:
         fig02.y_range = Range1d(-1000,1000)
         mlines02 = fig02.multi_line(xs='xrs', ys='yrs', source=self.source_02)
 
-
         curdoc().add_root(row(column(self.tabs,fig01), column(self.datetime_slider, self.div_inputs, fig02)))
-        # show(column(self.tabs,fig01))
 
     def tab_01(self):
         self.slider_zm = Slider(title='zm', start=0, end=20, step=0.1, value=1)
@@ -94,13 +84,11 @@ class view_k15:
 
     def update(self):
         datetime = dt.datetime.utcfromtimestamp(self.datetime_slider.value/1000)
-        # print(datetime)
 
         inputs = self.df.loc[self.df['TIMESTAMP']==datetime, ['u_rot','L','u*','v_var','wind_dir_compass']]
-        # print(inputs.value)
         print(inputs)
         self.div_inputs.text = '''
-<table border="2"><tbody><tr>
+        <table border="2"><tbody><tr>
 			<td>&nbsp;zm</td>
 			<td>umean</td>
 			<td>h</td>
@@ -123,8 +111,7 @@ class view_k15:
                    inputs['L'].values[0],
                    inputs['v_var'].values[0],
                    inputs['u*'].values[0],
-                   inputs['wind_dir_compass'].values[0]
-                   )
+                   inputs['wind_dir_compass'].values[0])
 
         out = self.a.output(zm=9,
                             umean=inputs['u_rot'].values[0],
