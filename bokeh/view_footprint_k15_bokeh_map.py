@@ -3,6 +3,8 @@ from bokeh.plotting import figure
 from bokeh.layouts import gridplot, column, row
 from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel
 from bokeh.tile_providers import ESRI_IMAGERY, get_provider
+from bokeh.transform import cumsum
+from bokeh.palettes import Spectral10
 
 import sys, pathlib
 sys.path.append(str(pathlib.Path(sys.path[0]).parent/'footprint'/'FFP_python_v1_4'))
@@ -36,7 +38,6 @@ class view_k15:
         x_range = (-5332000, -5327000)
         y_range = (-2535000, -2530000)
 
-
         tile_provider = get_provider(ESRI_IMAGERY)
 
         self.source = ColumnDataSource(data=dict(xrs=[], yrs=[]))
@@ -44,9 +45,18 @@ class view_k15:
         fig01.add_tile(tile_provider)
 
         teste01 = fig01.circle([self.iab3_x_utm_webMarcator], [self.iab3_y_utm_webMarcator], color='red')
-        mlines = fig01.multi_line(xs='xrs', ys='yrs', source=self.source, color='red')
+        mlines = fig01.multi_line(xs='xrs', ys='yrs', source=self.source, color='red', line_width=1)
 
 
+        self.source_02 = ColumnDataSource(data=dict(angle=[], color=[], significado=[]))
+        fig02 = figure(title='Categoria', plot_height=300, plot_width=500, x_range=(-1.6,1.4), toolbar_location=None)
+        wedge = fig02.annular_wedge(x=-1, y=0, inner_radius=0.3, outer_radius=0.45,
+                                    start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
+                                    line_color='white', fill_color='color', legend_field='significado', source=self.source_02)
+        fig02.axis.axis_label=None
+        fig02.axis.visible=False
+        fig02.grid.grid_line_color = None
+        fig02.outline_line_color = None
 
 
         self.slider_zm = Slider(title='zm', start=0, end=20, step=0.1, value=1)
@@ -60,7 +70,19 @@ class view_k15:
         for slider in sliders:
             slider.on_change('value_throttled', lambda attr, old, new: self.run_footprint())
 
-        self.div_01 = Div(text='Sem dados', width=500)
+        self.div_01 = Div(text='''
+                          <div class="header">
+                          <h1>Basic Stats</h1>
+                          <table border="1"><tbody><tr>
+                          <td><b>Floresta (#)</b>&nbsp;</td>
+                          <td><b>Outros (#)</b></td>
+                          <td><b>Aceitação (%)</b></td>
+                          </tr><tr>
+                          <td>&nbsp;0</td>
+                          <td>0</td>
+                          <td>0</td>
+                          </tr></tbody></table>
+                          </div>''', width=500)
 
         tab01 = Panel(child=column(self.slider_zm,
                                    self.slider_umean,
@@ -69,8 +91,8 @@ class view_k15:
                                    self.slider_sigmav,
                                    self.slider_ustar,
                                    self.slider_wind_dir,
-                                   self.div_01,
-                                   fig01), title='Inputs K15')
+                                   row(fig01, column(self.div_01,
+                                                     fig02))), title='Inputs K15')
         return tab01
 
     def run_footprint(self):
@@ -87,27 +109,29 @@ class view_k15:
         poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out[8][-1], out[9][-1])]
         poly_shp = Polygon(poly)
 
-        mask_teste =rasterio.mask.mask(self.raster, [poly_shp], crop=True, invert=False)
+        mask_teste = rasterio.mask.mask(self.raster, [poly_shp], crop=True, invert=False)
         unique, counts = np.unique(mask_teste[0], return_counts=True)
         simplified_stats = self.stats_pixel(unique, counts)
         self.div_01.text = '''
-        <table border="1"><tbody><tr>
-			<td>Floresta&nbsp;</td>
-			<td>Outros</td>
+        <div class="header">
+        <h1>Basic Stats</h1><table border="1"><tbody><tr>
+        <td>Floresta (#)&nbsp;</td>
+        <td>Outros (#)</td>
+        <td>Aceitação (%)</td>
 		</tr><tr>
-			<td>&nbsp;{}</td>
-			<td>{}</td>
-		</tr></tbody></table>'''.format(simplified_stats[0], simplified_stats[1])
+        <td>&nbsp;{}</td>
+        <td>{}</td>
+        <td>{:.2f}</td>
+		</tr></tbody></table>
+        </div>'''.format(simplified_stats[0], simplified_stats[1], 100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
 
 
         # Web Marcator
         x_webMarcator = list(np.array(out[8][-1]) + self.iab3_x_utm_webMarcator)
         y_webMarcator = list(np.array(out[9][-1]) + self.iab3_y_utm_webMarcator)
-        # print(x_webMarcator)
-        # print(out[8][-1])
+
         self.source.data = dict(xrs=[x_webMarcator], yrs=[y_webMarcator])
-        # print(out[8])
-        # self.source.data = dict(xrs=out[8], yrs=out[9])
+
 
     def stats_pixel(self, unique, counts):
         significado_pixel = {3: 'Floresta Natural => Formação Florestal',
@@ -119,8 +143,11 @@ class view_k15:
                              20: 'Agricultura => Cultivo Semi-Perene',
                              24: 'Infraestrutura Urbana',
                              25: 'Outra área não Vegetada',
-                             33: "Corpo d'água",
-                             255: 'Fora do escopo'}
+                             33: "Corpo d'água"}
+        significado_pixel_lista = ['Floresta Natural (Formação Florestal)', 'Floesta Natural (Formação Savânica)',
+                                   'Floresta Plantada', 'Formação Campestre', 'Pastagem', 'Agricultura (Cultivo Anual e Perene)',
+                                   'Agricultura (Cultivo Semi-Perene)', 'Infraestrutura Urbana', 'Outra área não Vegetada', "Corpo d'água"]
+
         pixel_dict = dict(zip(unique, counts))
 
         pixel_simplified = []
@@ -130,7 +157,15 @@ class view_k15:
             except:
                 pixel_simplified.append(0)
         pixel_floresta = pixel_simplified[0] + pixel_simplified[1]
-        pixel_resto = sum(pixel_simplified[2:-1])
+        pixel_resto = sum(pixel_simplified[2:])
+
+        df = pd.DataFrame({'significado': significado_pixel_lista, 'value':pixel_simplified})
+        df['angle'] = df['value']/df['value'].sum() * 2*np.pi
+
+        self.source_02.data = dict(angle=df['angle'],
+                                   color=Spectral10,
+                                   significado=df['significado'])
+
         return pixel_floresta, pixel_resto
 
 
