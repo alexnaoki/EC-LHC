@@ -114,7 +114,7 @@ class view_k15:
         return tab01
 
     def run_footprint(self):
-        # Input para o footprint de Kljun et al. (2015)
+        # Output para o footprint de Kljun et al. (2015)
         out = self.a.output(zm=self.slider_zm.value,
                             umean=self.slider_umean.value,
                             h=self.slider_h.value,

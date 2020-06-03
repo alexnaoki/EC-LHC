@@ -21,25 +21,38 @@ import rasterio.mask
 
 class view_k15:
     def __init__(self):
+        '''
+        Visualizador do Footprint, tanto de um intervalo médio de análise como um range, utilizando o método por Kljun et al. (2015)
+        "bokeh serve --show [Full Path deste arquivo .py]"
+        '''
+        # Colunas do FullOutput do EddyPro a serem utilizadas
         self.ep_columns_filtered = ['date','time','wind_dir', 'u_rot','L','v_var','u*','wind_speed']
 
-
+        # Coordenadas x, y da torre IAB3 para web Marcator
         self.iab3_x_utm_webMarcator = -5328976.90
         self.iab3_y_utm_webMarcator = -2532052.38
 
+        # Localização do arquivo tif retirado do mapbiomas no sistema de coordenadas Sirgas 2000 23S
         self.tif_file = r'C:\Users\User\git\EC-LHC\iab3_site\IAB1_SIRGAS_23S.tif'
         self.raster = rasterio.open(self.tif_file)
+
+        # Coordenadas x,y da torre IAB3 para Sirgas 2000 23S
         self.iab3_x_utm_sirgas = 203917.07880027
         self.iab3_y_utm_sirgas = 7545463.6805863
 
+        # Inicialização dos 3 tabs
         self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03()])
 
-
+        # Gerar servidor para rodar o programa
         curdoc().add_root(self.tabs)
 
     def tab_01(self):
+        '''
+        O tab_01 tem por objetivo inserir os dados do EddyPro
+        '''
         self.div_01 = Div(text=r'C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01', width=500)
 
+        # Widgets e aplicação das funções no tab_01
         self.path_ep = TextInput(value='', title='EP Path:')
         self.path_ep.on_change('value', self._textInput)
 
@@ -49,21 +62,27 @@ class view_k15:
         self.button_plot = Button(label='Plot')
         self.button_plot.on_click(self._button_plot)
 
-
         tab01 = Panel(child=column(self.div_01, self.path_ep, self.select_config, self.button_plot), title='EP Config')
 
         return tab01
 
-
     def tab_02(self):
+        '''
+        O tab_02 tem por objetivo a visualização do footprint por intervalo médio de análise
+        '''
+        # Range do x, y relativo ao web Mercator
         x_range = (-5332000, -5327000)
         y_range = (-2535000, -2530000)
+
+        # Tile para display do mapa na figura
         tile_provider = get_provider(ESRI_IMAGERY)
 
+        # Inicialização da Função de footprint de Kljun et al. (2015) por intervalo médio de análise
         self.k15_individual = FFP()
 
         self.div_02_01 = Div(text='Footprint por intervalo de 30 minutos através da metodologia Kljun et al. (2015)', width=500)
 
+        # Widgets e aplicação da função
         self.datetime_slider = DateSlider(title='Datetime:',
                                           start=dt.datetime(2018,1,1,0,0),
                                           end=dt.datetime(2018,1,1,0,30),
@@ -73,17 +92,17 @@ class view_k15:
 
         self.div_02_02 = Div(text='Selecione os dados', width=500)
 
+        # Figura 01 - Mapa e Footprint
         self.source_01 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
-
         self.fig_01 = figure(title='Footprint K15', plot_height=400, plot_width=400, x_range=x_range, y_range=y_range)
         self.fig_01.add_tile(tile_provider)
 
+        # Glyps da localização da torre IAB3 e contribuição de 90% do footprint
         iab03 = self.fig_01.circle([self.iab3_x_utm_webMarcator], [self.iab3_y_utm_webMarcator], color='red')
-
         mlines = self.fig_01.multi_line(xs='xrs', ys='yrs', source=self.source_01, color='red', line_width=1)
 
+        # Figura 02 - Categoria do tipo de vegetação pelo footprint
         self.source_01_02 = ColumnDataSource(data=dict(angle=[], color=[], significado=[]))
-
         self.fig_01_02 = figure(plot_height=300, plot_width=500, x_range=(-1.6,1.4), toolbar_location=None)
         wedge_significado = self.fig_01_02.annular_wedge(x=-1, y=0, inner_radius=0.3, outer_radius=0.45,
                                                          start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
@@ -93,6 +112,7 @@ class view_k15:
         self.fig_01_02.grid.grid_line_color = None
         self.fig_01_02.outline_line_color = None
 
+        # Tabela para basic stats
         self.div_02_03 = Div(text='''
                           <div class="header">
                           <h1>Basic Stats</h1>
@@ -107,7 +127,7 @@ class view_k15:
                           </tr></tbody></table>
                           </div>''', width=500)
 
-
+        # Criação do tab02
         tab02 = Panel(child=column(self.div_02_01,
                                    self.datetime_slider,
                                    self.div_02_02,
@@ -117,14 +137,22 @@ class view_k15:
         return tab02
 
     def tab_03(self):
+        '''
+        O tab_03 tem por objetivo a visualização do footprint por range de intervalo médio de análise e verificação da direção do vento
+        '''
+        # Range do x, y relativo ao web Mercator
         x_range = (-5332000, -5327000)
         y_range = (-2535000, -2530000)
+
+        # Tile para display do mapa na figura
         tile_provider = get_provider(ESRI_IMAGERY)
 
+        # Inicialização da Função de footprint de Kljun et al. (2015) por range de intervalo médio de análise
         self.k15_climatology = FFP_climatology()
 
         self.div_03 = Div(text='Footprint acumulado através da metodologia Kljun et al. (2015) e direção do vento', width=500)
 
+        # Widgets e aplicação da função
         self.date_range = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),
                                           end=dt.datetime(2019,1,1),
                                           value=(dt.datetime(2018,1,1), dt.datetime(2019,1,1)),
@@ -138,29 +166,37 @@ class view_k15:
         self.date_range.on_change('value', lambda attr,old,new:self.update_windDir())
         self.time_range.on_change('value', lambda attr,old,new:self.update_windDir())
 
+        # A figura responsável pelo footprint é apenas atualizada após o click deste botão
         self.button_update_ffp = Button(label='Update Plot', width=500)
         self.button_update_ffp.on_click(self._button_update_ffp)
 
-
+        # Figura 03 - Mapa e Footprint acumulado
         self.source_02 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
         self.fig_02 = figure(title='Footprint K15 acumulado', plot_height=400, plot_width=500, x_range=x_range, y_range=y_range)
         self.fig_02.add_tile(tile_provider)
+        self.fig_02.title.align = 'center'
+        self.fig_02.title.text_font_size = '20px'
+
+        # Glyphs da localização da torre IAB3 e contribuição de 90% do footprint e as legendas
         iab03 = self.fig_02.circle([self.iab3_x_utm_webMarcator], [self.iab3_y_utm_webMarcator], color='red')
-
         mlines = self.fig_02.multi_line(xs='xrs', ys='yrs', source=self.source_02, color='red', line_width=1)
-
         legend = Legend(items=[
             LegendItem(label='Torre IAB3', renderers=[iab03], index=0),
             LegendItem(label='Footprint Kljun et al. (90%)', renderers=[mlines], index=1)
         ])
         self.fig_02.add_layout(legend)
-        self.fig_02.title.align = 'center'
-        self.fig_02.title.text_font_size = '20px'
 
-
+        # Figura 04 - Rosa dos ventos, com a direção dos ventos corrigida
         self.source_02_02 = ColumnDataSource(data=dict(inner=[0], outer=[1], start=[0],end=[2]))
         self.fig_02_02 = figure(title='Direção do vento', plot_height=400, plot_width=400, toolbar_location=None, x_range=(-1.2, 1.2), y_range=(-1.2, 1.2))
+        self.fig_02_02.axis.visible = False
+        self.fig_02_02.axis.axis_label = None
+        self.fig_02_02.grid.grid_line_color = None
+        self.fig_02_02.outline_line_color = None
+        self.fig_02_02.title.align = 'center'
+        self.fig_02_02.title.text_font_size = '20px'
 
+        # Glyphs da direção do vento e glyphs auxiliares para o grid dessa figura
         wedge = self.fig_02_02.annular_wedge(x=0, y=0, inner_radius='inner', outer_radius='outer', start_angle='start', end_angle='end', color='#FF00FF', source=self.source_02_02)
         circle = self.fig_02_02.circle(x=0, y=0, radius=[0.25,0.5,0.75], fill_color=None,line_color='white')
         circle2 = self.fig_02_02.circle(x=0, y=0, radius=[1], fill_color=None, line_color='grey')
@@ -169,24 +205,20 @@ class view_k15:
         self.date_range.on_change('value', lambda attr,old,new:self.update_windDir())
         self.time_range.on_change('value', lambda attr,old,new:self.update_windDir())
 
-        self.fig_02_02.axis.visible = False
-        self.fig_02_02.axis.axis_label = None
-        self.fig_02_02.grid.grid_line_color = None
-        self.fig_02_02.outline_line_color = None
-        self.fig_02_02.title.align = 'center'
-        self.fig_02_02.title.text_font_size = '20px'
-
+        # Figura 05 - Categoria do tipo de vegetação pelo footprint
         self.source_02_03 = ColumnDataSource(data=dict(angle=[], color=[], significado=[]))
         self.fig_02_03 = figure(plot_height=300, plot_width=500, x_range=(-1.6,1.4), toolbar_location=None)
-        wedge_significado = self.fig_02_03.annular_wedge(x=-1, y=0, inner_radius=0.3, outer_radius=0.45,
-                                                         start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
-                                                         line_color='white', fill_color='color', legend_field='significado', source=self.source_02_03)
         self.fig_02_03.axis.axis_label=None
         self.fig_02_03.axis.visible=False
         self.fig_02_03.grid.grid_line_color = None
         self.fig_02_03.outline_line_color = None
 
+        # Glyph das categorias de vegetação
+        wedge_significado = self.fig_02_03.annular_wedge(x=-1, y=0, inner_radius=0.3, outer_radius=0.45,
+                                                         start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
+                                                         line_color='white', fill_color='color', legend_field='significado', source=self.source_02_03)
 
+        # Tabela para basic stats
         self.div_03_02 = Div(text='''
                           <div class="header">
                           <h2>Basic Stats</h2>
@@ -202,6 +234,7 @@ class view_k15:
                           </div>''', width=400,sizing_mode="stretch_width")
 
 
+        # Organização do tab
         widgets = column(self.date_range,self.time_range,self.button_update_ffp)
 
         tab03 = Panel(child=column(self.div_03,
@@ -217,6 +250,9 @@ class view_k15:
         return tab03
 
     def _textInput(self, attr, old, new):
+        '''
+        Função para ler o arquivo Readme.txt (Metafile) do FullOutput do EddyPro
+        '''
         if self.tabs.active == 0:
             try:
                 self.folder_path_ep = pathlib.Path(new)
@@ -231,8 +267,10 @@ class view_k15:
                 print('erro text input readme')
 
     def _select_config(self, attr, old, new):
+        '''
+        Função para ler um arquivo específico do FullOutput do EddyPro
+        '''
         print(new)
-
         full_output_files = self.folder_path_ep.rglob('*{}*_full_output*.csv'.format(new[-3:]))
         dfs_single_config = []
         for file in full_output_files:
@@ -244,11 +282,18 @@ class view_k15:
         print('ok')
 
     def update_ffp(self):
+        '''
+        Função para aplicação do footprint, a depender do tab selecionado
+        '''
         if self.tabs.active == 1:
+            # Transformação de float do widget para datetime
             datetime = dt.datetime.utcfromtimestamp(self.datetime_slider.value/1000)
 
+            # Filtração por datetime do widget
             inputs_to_k15 = self.df_ep.loc[self.df_ep['TIMESTAMP']==datetime, ['u_rot', 'L', 'u*','v_var','wind_dir_compass']]
             print(inputs_to_k15)
+
+            # Atualização da tabela com os inputs para a função do método de footprint por Kljun et al. (2015)
             self.div_02_02.text = '''
             <table border="2"><tbody><tr><td>&nbsp;zm</td><td>umean</td><td>h</td><td>ol</td><td>sigmav</td><td>ustar</td><td>wind_dir_compass</td>
     		</tr><tr>
@@ -260,6 +305,8 @@ class view_k15:
                                       inputs_to_k15['v_var'].values[0],
                                       inputs_to_k15['u*'].values[0],
                                       inputs_to_k15['wind_dir_compass'].values[0])
+
+            # Output para o footprint de Kljun et a. (2015)
             out = self.k15_individual.output(zm=9,
                                              umean=inputs_to_k15['u_rot'].values[0],
                                              h=1000,
@@ -269,14 +316,20 @@ class view_k15:
                                              wind_dir=inputs_to_k15['wind_dir_compass'].values[0],
                                              rs=[0.3, 0.9], crop=False, fig=False)
 
-            # Sirgas 2000 utm 23S
+            # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
             poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out[8][-1], out[9][-1])]
             poly_shp = Polygon(poly)
 
+            # Mask utilzindo o arquivo tif e o polígono (ambos no mesmo sistema de coordenadas)
             mask_teste = rasterio.mask.mask(self.raster, [poly_shp], crop=True, invert=False)
+
+            # Contabilização e contagem do Mask
             unique, counts = np.unique(mask_teste[0], return_counts=True)
+
+            # Função para calcular estatísticas básicas do Mask
             simplified_stats = self.stats_pixel(unique, counts)
 
+            # Atualização da tabela com os dados do basic stats
             self.div_02_03.text = '''
             <div class="header">
             <h1>Basic Stats</h1><hr><table border="1"><tbody><tr>
@@ -288,23 +341,27 @@ class view_k15:
             <td>{}</td>
             <td>{:.2f}</td>
     		</tr></tbody></table>
-            </div>'''.format(simplified_stats[0], simplified_stats[1], 100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
+            </div>'''.format(simplified_stats[0],
+                             simplified_stats[1],
+                             100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
 
 
-            # Web Marcator
+            # Transformação das coordenadas de footprint de Kljun et al. (2015) [0,0] para Web Marcator
             x_webMarcator = list(np.array(out[8][-1]) + self.iab3_x_utm_webMarcator)
             y_webMarcator = list(np.array(out[9][-1]) + self.iab3_y_utm_webMarcator)
 
+            # Atualização do source
             self.source_01.data = dict(xrs=[x_webMarcator], yrs=[y_webMarcator])
 
         if self.tabs.active == 2:
-            # try:
+            # Transformação de float do widget para datetime
             start_date = dt.datetime.utcfromtimestamp(self.date_range.value[0]/1000).date()
             end_date = dt.datetime.utcfromtimestamp(self.date_range.value[1]/1000).date()
 
             start_time = dt.datetime.utcfromtimestamp(self.time_range.value[0]/1000).time()
             end_time = dt.datetime.utcfromtimestamp(self.time_range.value[1]/1000).time()
 
+            # Filtração por datetime dos widgets
             inputs_to_k15 = self.df_ep.loc[
                 (self.df_ep['TIMESTAMP'].dt.date >= start_date) &
                 (self.df_ep['TIMESTAMP'].dt.date <= end_date) &
@@ -313,6 +370,7 @@ class view_k15:
                 ['u_rot','L','u*', 'v_var','wind_dir_compass']
             ]
 
+            # Output para o footprint de Kljun et al. (2015)
             out = self.k15_climatology.output(zm=9,
                                               umean=inputs_to_k15['u_rot'].to_list(),
                                               h=[1000 for i in range(len(inputs_to_k15['u_rot'].to_list()))],
@@ -321,14 +379,21 @@ class view_k15:
                                               ustar=inputs_to_k15['u*'].to_list(),
                                               wind_dir=inputs_to_k15['wind_dir_compass'].to_list(),
                                               rs=[0.3, 0.9], crop=False, fig=False)
-            # Sirgas 2000 utm 23S
+
+            # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
             poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out['xr'][-1], out['yr'][-1])]
             poly_shp = Polygon(poly)
 
+            # mask utilizando o arquivo tif e o polígono (ambos no mesmo sistema de coordenadas)
             mask_teste = rasterio.mask.mask(self.raster, [poly_shp], crop=True, invert=False)
+
+            # Contabilização e contagem do Mask
             unique, counts = np.unique(mask_teste[0], return_counts=True)
+
+            # Função para calcular estatísticas básicas do Mask
             simplified_stats = self.stats_pixel(unique, counts)
 
+            # Atualização da tabela com os dados do basic stats
             self.div_03_02.text = '''
             <div class="header">
             <h1>Basic Stats</h1><hr><table border="1"><tbody><tr>
@@ -340,49 +405,51 @@ class view_k15:
             <td>{}</td>
             <td>{:.2f}</td>
     		</tr></tbody></table>
-            </div>'''.format(simplified_stats[0], simplified_stats[1], 100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
+            </div>'''.format(simplified_stats[0],
+                             simplified_stats[1],
+                             100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
 
-
-            # Web Marcator
+            # Transformação das coordenadas de footprint de Kljun et al. (2015) [0,0] para Web Marcator
             x_webMarcator = list(np.array(out['xr'][-1]) + self.iab3_x_utm_webMarcator)
             y_webMarcator = list(np.array(out['yr'][-1]) + self.iab3_y_utm_webMarcator)
 
+            # Atualização do source
             self.source_02.data = dict(xrs=[x_webMarcator], yrs=[y_webMarcator])
-            # except:
-            #     print('erro update')
 
     def update_windDir(self):
+        # Transformação do float para datetime
         start_date = dt.datetime.utcfromtimestamp(self.date_range.value[0]/1000).date()
         end_date = dt.datetime.utcfromtimestamp(self.date_range.value[1]/1000).date()
 
         start_time = dt.datetime.utcfromtimestamp(self.time_range.value[0]/1000).time()
         end_time = dt.datetime.utcfromtimestamp(self.time_range.value[1]/1000).time()
 
+        # Criação do vetor de intervalos de ângulos e iniciando como 0° no Norte (posição vertical)
         start_angle = np.arange(0,360,10)*np.pi/180 + 90*np.pi/180
         end_angle = np.arange(10,370,10)*np.pi/180 + 90*np.pi/180
 
+        # Filtração por datetime
         filter = self.df_ep[(self.df_ep['TIMESTAMP'].dt.date >= start_date) &
                             (self.df_ep['TIMESTAMP'].dt.date <= end_date) &
                             (self.df_ep['TIMESTAMP'].dt.time >= start_time) &
                             (self.df_ep['TIMESTAMP'].dt.time <= end_time)]
 
+        # Atualização do source, sendo que é contado o número por bins
         self.source_02_02.data = dict(inner=[0 for i in range(36)],
                                    outer=filter.groupby(by='wind_bin').count()['wind_dir_compass'][::-1]/filter.groupby(by='wind_bin').count()['wind_dir_compass'].max(),
                                    start=start_angle,
                                    end=end_angle)
-        # print(filter.groupby(by='wind_bin').count()['wind_dir_compass'])
 
     def _button_plot(self):
+        # Atualização dos ranges do widget
         self.datetime_slider.start = self.df_ep['TIMESTAMP'].min()
         self.datetime_slider.end = self.df_ep['TIMESTAMP'].max()
         self.datetime_slider.value = self.df_ep['TIMESTAMP'].min()
 
-        # self.date_range.start = self.df_ep['date'].min()
-        # self.date_range.end = self.df_ep['date'].max()
-        # self.date_range.value = (self.df_ep['date'].min(), self.df_ep['date'].max())
-
+        # Função para corrigir direção do vento
         self._adjust_wind_direction()
 
+        # Criação de bins para discretização da direção do vento
         self.theta = np.linspace(0, 360, 36)
         theta01 = np.linspace(0, 360, 37)
         # print(theta01)
@@ -398,13 +465,20 @@ class view_k15:
 
 
     def _adjust_wind_direction(self):
+        '''
+        Informação sobre essa transformação se encontra na ../info/wind_direction.md
+        '''
         self.df_ep['wind_dir_sonic'] = 360 - self.df_ep['wind_dir']
         azimute = 135.1
         self.df_ep['wind_dir_compass'] = (360 + azimute - self.df_ep['wind_dir_sonic']).apply(lambda x: x-360 if x>=360 else x)
 
 
     def stats_pixel(self, unique, counts):
+        '''
+        Output dos stats_pixel varia de acordo com o tab selecionado
+        '''
         if self.tabs.active == 1:
+            # Dicionário e lista do significado do pixel do tif. Não foi inserido 255.
             significado_pixel = {3: 'Floresta Natural => Formação Florestal',
                                  4: 'Floesta Natural => Formação Savânica',
                                  9: 'Floresta Plantada',
@@ -421,15 +495,19 @@ class view_k15:
 
             pixel_dict = dict(zip(unique, counts))
 
+            # A partir do dicionário contiver counts será inserido na lista, caso não contiver 0 será aplicado.
             pixel_simplified = []
             for i in significado_pixel:
                 try:
                     pixel_simplified.append(pixel_dict[i])
                 except:
                     pixel_simplified.append(0)
+
+            # Pixels de Floresta Natural serão somados, enquanto e o resto também
             pixel_floresta = pixel_simplified[0] + pixel_simplified[1]
             pixel_resto = sum(pixel_simplified[2:])
 
+            # Criação do DataFrame e calculo do ângulo para o wedge da figura 02
             df = pd.DataFrame({'significado': significado_pixel_lista, 'value':pixel_simplified})
             df['angle'] = df['value']/df['value'].sum() * 2*np.pi
 
@@ -437,7 +515,9 @@ class view_k15:
                                        color=Spectral10,
                                        significado=df['significado'])
             return pixel_floresta, pixel_resto
+
         if self.tabs.active == 2:
+            # Dicionário e lista do significado do pixel do tif. Não foi inserido 255.
             significado_pixel = {3: 'Floresta Natural => Formação Florestal',
                                  4: 'Floesta Natural => Formação Savânica',
                                  9: 'Floresta Plantada',
@@ -454,15 +534,19 @@ class view_k15:
 
             pixel_dict = dict(zip(unique, counts))
 
+            # A partir do dicionário contiver counts será inserido na lista, caso não contiver 0 será aplicado.
             pixel_simplified = []
             for i in significado_pixel:
                 try:
                     pixel_simplified.append(pixel_dict[i])
                 except:
                     pixel_simplified.append(0)
+
+            # Pixels de Floresta Natural serão somados, enquanto e o resto também
             pixel_floresta = pixel_simplified[0] + pixel_simplified[1]
             pixel_resto = sum(pixel_simplified[2:])
 
+            # Criação do DataFrame e calculo do ângulo para o wedge da figura 02
             df = pd.DataFrame({'significado': significado_pixel_lista, 'value':pixel_simplified})
             df['angle'] = df['value']/df['value'].sum() * 2*np.pi
 
