@@ -87,7 +87,7 @@ class view_k15:
                                           start=dt.datetime(2018,1,1,0,0),
                                           end=dt.datetime(2018,1,1,0,30),
                                           value=dt.datetime(2018,1,1,0,0),
-                                          step=1000*60*30, format='%x %X')
+                                          step=1000*60*30, format="%d/%m/%Y %H:%M")
         self.datetime_slider.on_change('value_throttled', lambda attr, old, new: self.update_ffp())
 
         self.div_02_02 = Div(text='Selecione os dados', width=500)
