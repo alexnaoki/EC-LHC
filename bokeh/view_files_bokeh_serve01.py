@@ -1,5 +1,5 @@
 from bokeh.io import show, output_file, curdoc
-from bokeh.models import Button, TextInput, Paragraph, Select, Panel, Tabs,ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem, LinearColorMapper, Div,CheckboxButtonGroup,Slider,CheckboxGroup,RangeSlider,BasicTicker, ColorBar
+from bokeh.models import Button, TextInput, Paragraph, Select, Panel, Tabs,ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem, LinearColorMapper, Div,CheckboxButtonGroup,Slider,CheckboxGroup,RangeSlider,BasicTicker, ColorBar,DatetimeTickFormatter
 from bokeh.layouts import gridplot, column, row
 from bokeh.plotting import figure
 from bokeh.transform import transform
@@ -64,13 +64,18 @@ class teste01:
         # Figure 04 (ET)
         x_range_date = [(dt.datetime(2018,4,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
         y_range_time = [(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).time().strftime('%H:%M') for i in range(48)]
-        self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_range=x_range_date, y_range=y_range_time)
+        # self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_range=x_range_date, y_range=y_range_time)
+        self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_axis_type='datetime', y_axis_type='datetime')
+        self.fig_04.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
+        self.fig_04.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
+
         colors = ['#440154', '#404387', '#29788E', '#22A784', '#79D151', '#FDE724']
         self.color_mapper = LinearColorMapper(palette=colors)
 
         # circle_et = self.fig_04.circle(x='x', y='ET', source=self.source_01, color='black')
 
-        self.et = self.fig_04.rect(x='date', y='time', fill_color=transform('ET', self.color_mapper), source=self.source_01, width=1, height=1, line_color=None)
+        # self.et = self.fig_04.rect(x='date', y='time', fill_color=transform('ET', self.color_mapper), source=self.source_01, width=1, height=1, line_color=None)
+        self.et = self.fig_04.rect(x='date', y='time', fill_color=transform('ET', self.color_mapper), source=self.source_01, width=1000*60*60*24, height=1000*60*30, line_color=None)
         color_bar = ColorBar(color_mapper=self.color_mapper, ticker=BasicTicker(desired_num_ticks=len(colors)),label_standoff=6, border_line_color=None, location=(0,0))
         self.fig_04.add_layout(color_bar, 'right')
 
@@ -194,6 +199,9 @@ class teste01:
         self.daterangeslider.end = self.dfs_compare['TIMESTAMP'].dt.date.max()
         self.daterangeslider.value = (self.dfs_compare['TIMESTAMP'].dt.date.min(), self.dfs_compare['TIMESTAMP'].dt.date.max())
 
+        self.dfs_compare['date_ns'] = pd.to_datetime(self.dfs_compare['date'])
+        self.dfs_compare['time_ns'] = pd.to_datetime(self.dfs_compare['time'])
+
         # self.fig_04.x_range = self.dfs_compare['date'].unique()
         # self.fig_04.y_range = self.dfs_compare['time'].unique()
         # self.fig_04.y_range = range(5)
@@ -235,12 +243,14 @@ class teste01:
 
     def update_01(self):
         self.df_filter = self.filter_flag()
+        # print(self.df_filter[['date','time']].dtypes)
+        # print(self.df_filter[['date_ns','time_ns']].dtypes)
 
         self.source_01.data = dict(x=self.df_filter['TIMESTAMP'],
                                    y=self.df_filter[['H', 'LE','H_strg','LE_strg']].sum(axis=1, min_count=1),
                                    y02=self.df_filter['Rn_Avg']-self.df_filter[['shf_Avg(1)','shf_Avg(2)']].mean(axis=1),
-                                   date=self.df_filter['date'],
-                                   time=self.df_filter['time'],
+                                   date=self.df_filter['date_ns'],
+                                   time=self.df_filter['time_ns'],
                                    ET=self.df_filter['ET'])
 
         self.color_mapper.low = self.df_filter['ET'].min()
