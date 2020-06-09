@@ -1,9 +1,9 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure
-from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel, DateRangeSlider,Legend, LegendItem
+from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel, DateRangeSlider,Legend, LegendItem,DatetimeTickFormatter,BasicTicker, LinearColorMapper,ColorBar
 from bokeh.layouts import column, row, layout
 from bokeh.tile_providers import ESRI_IMAGERY, get_provider
-from bokeh.transform import cumsum
+from bokeh.transform import cumsum, transform
 from bokeh.palettes import Spectral10
 
 import sys, pathlib
@@ -41,7 +41,7 @@ class view_k15:
         self.iab3_y_utm_sirgas = 7545463.6805863
 
         # Inicialização dos 3 tabs
-        self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03()])
+        self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03(), self.tab_04()])
 
         # Gerar servidor para rodar o programa
         curdoc().add_root(self.tabs)
@@ -249,6 +249,61 @@ class view_k15:
         # tab03 = Panel(child=layout03, title='Footprint per range')
         return tab03
 
+    def tab_04(self):
+        self.div_04_01 = Div(text='Teste', width=400)
+
+        self.datetime_range = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),
+                                              end=dt.datetime(2019,1,1),
+                                              value=(dt.datetime(2018,1,1), dt.datetime(2019,1,1)),
+                                              step=30*60*1000, format="%d/%m/%Y %H:%M")
+        # self.datetime_range.on_change('value', lambda attr, old,new:self._teste1())
+        self.path_download = TextInput(value='', title='Folder to Download')
+        self.button_download = Button(label='Download', width=150, button_type='danger')
+        self.button_download.on_click(self._button_download)
+
+        self.div_04_02 = Div(text=r'C:\Users\User\Mestrado\Testes\classification_pixel_2019-01-12-17-00to2019-01-31-04-00.csv')
+
+        self.path_footprintStats_k15 = TextInput(value='', title='Path FootprintStats K15')
+        self.button_update_footprintstats = Button(label='Update')
+        self.button_update_footprintstats.on_click(self._button_update_heatmap)
+
+        # x_range_date = [(dt.datetime(2018,4,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
+        # y_range_date = [(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).time().strftime('%H:%M') for i in range(48)]
+        # , x_range=x_range_date, y_range=y_range_date,
+        # self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_range=x_range_date, y_range=y_range_date)
+
+        self.source_04 = ColumnDataSource(data=dict(date=[],time=[],classification_pixel=[]))
+
+        self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_axis_type='datetime', y_axis_type='datetime')
+        self.fig_04.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
+        self.fig_04.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
+        self.fig_04.axis.axis_line_color = None
+        self.fig_04.axis.major_tick_line_color = None
+
+        # self.fig_04.rect(x=[dt.datetime(2018,1,1), dt.datetime(2018,1,2)],
+        #                  y=[dt.datetime(2018,1,1,0,30), dt.datetime(2018,1,1,1,30)],
+        #                  width=1000*60*60*24, height=1000*60*30, line_color=None)
+        self.color_mapper_pixels = LinearColorMapper(palette=Spectral10)
+        self.fig_04.rect(x='date',
+                         y='time',
+                         fill_color=transform('classification_pixel', self.color_mapper_pixels),
+                         source=self.source_04,
+                         width=1000*60*60*24, height=1000*60*30, line_color=None)
+        color_bar = ColorBar(color_mapper=self.color_mapper_pixels, ticker=BasicTicker(desired_num_ticks=len(Spectral10)),label_standoff=6, border_line_color=None, location=(0,0))
+        self.fig_04.add_layout(color_bar, 'right')
+
+        self.fig_04.xaxis.major_label_orientation = 1
+
+        tab04 = Panel(child=column(self.div_04_01,
+                                   self.datetime_range,
+                                   row(self.path_download, self.button_download),
+                                   self.div_04_02,
+                                   row(self.path_footprintStats_k15, self.button_update_footprintstats),
+                                   self.fig_04), title='Heatmap')
+        # tab04_teste = Div()
+        return tab04
+
+
     def _textInput(self, attr, old, new):
         '''
         Função para ler o arquivo Readme.txt (Metafile) do FullOutput do EddyPro
@@ -446,6 +501,10 @@ class view_k15:
         self.datetime_slider.end = self.df_ep['TIMESTAMP'].max()
         self.datetime_slider.value = self.df_ep['TIMESTAMP'].min()
 
+        self.datetime_range.start = self.df_ep['TIMESTAMP'].min()
+        self.datetime_range.end = self.df_ep['TIMESTAMP'].max()
+        self.datetime_range.value = (self.df_ep['TIMESTAMP'].min(), self.df_ep['TIMESTAMP'].max())
+
         # Função para corrigir direção do vento
         self._adjust_wind_direction()
 
@@ -555,6 +614,158 @@ class view_k15:
                                        significado=df['significado'])
             return pixel_floresta, pixel_resto
 
+        if self.tabs.active == 3:
+            # Dicionário e lista do significado do pixel do tif. Não foi inserido 255.
+            significado_pixel = {3: 'Floresta Natural => Formação Florestal',
+                                 4: 'Floesta Natural => Formação Savânica',
+                                 9: 'Floresta Plantada',
+                                 12: 'Formação Campestre/Outra formação não Florestal',
+                                 15: 'Pastagem',
+                                 19: 'Agricultura => Cultivo Anual e Perene',
+                                 20: 'Agricultura => Cultivo Semi-Perene',
+                                 24: 'Infraestrutura Urbana',
+                                 25: 'Outra área não Vegetada',
+                                 33: "Corpo d'água"}
+            significado_pixel_lista = ['Floresta Natural (Formação Florestal)', 'Floesta Natural (Formação Savânica)',
+                                       'Floresta Plantada', 'Formação Campestre', 'Pastagem', 'Agricultura (Cultivo Anual e Perene)',
+                                       'Agricultura (Cultivo Semi-Perene)', 'Infraestrutura Urbana', 'Outra área não Vegetada', "Corpo d'água"]
+            pixel_dict = dict(zip(unique, counts))
+
+            # A partir do dicionário contiver counts será inserido na lista, caso não contiver 0 será aplicado.
+            pixel_simplified = []
+            for i in significado_pixel:
+                try:
+                    pixel_simplified.append(pixel_dict[i])
+                except:
+                    pixel_simplified.append(0)
+            # print(pixel_simplified)
+            # pixel_complete = dict(zip(significado_pixel_lista, pixel_simplified))
+            # return pixel_simplified[0],pixel_simplified[1],pixel_simplified[2],pixel_simplified[3],pixel_simplified[4],pixel_simplified[5],pixel_simplified[6],pixel_simplified[7],pixel_simplified[8],pixel_simplified[9]
+            return pixel_simplified
+
+    def _button_download(self):
+        if self.tabs.active == 3:
+            datetime_start = dt.datetime.utcfromtimestamp(self.datetime_range.value[0]/1000)
+            datetime_end = dt.datetime.utcfromtimestamp(self.datetime_range.value[1]/1000)
+
+            inputs_to_k15 = self.df_ep.loc[(self.df_ep['TIMESTAMP']>=datetime_start) &
+                                           (self.df_ep['TIMESTAMP']<=datetime_end), ['TIMESTAMP','date','time','u_rot', 'L', 'u*','v_var','wind_dir_compass']]
+            print(inputs_to_k15)
+            df_to_save = inputs_to_k15.copy()
+
+            # classfication_list = []
+            code03=[]
+            code04=[]
+            code09=[]
+            code12=[]
+            code15=[]
+            code19=[]
+            code20=[]
+            code24=[]
+            code25=[]
+            code33=[]
+
+            for index, row in inputs_to_k15.iterrows():
+                print(row)
+                try:
+                    # Output para o footprint de Kljun et a. (2015)
+                    out = self.k15_individual.output(zm=9,
+                                                     umean=row['u_rot'],
+                                                     h=1000,
+                                                     ol=row['L'],
+                                                     sigmav=row['v_var'],
+                                                     ustar=row['u*'],
+                                                     wind_dir=row['wind_dir_compass'],
+                                                     rs=[0.3, 0.9], crop=False, fig=False)
+
+                    # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
+                    poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out[8][-1], out[9][-1])]
+                    poly_shp = Polygon(poly)
+
+                    # Mask utilzindo o arquivo tif e o polígono (ambos no mesmo sistema de coordenadas)
+                    mask_teste = rasterio.mask.mask(self.raster, [poly_shp], crop=True, invert=False)
+
+                    # Contabilização e contagem do Mask
+                    unique, counts = np.unique(mask_teste[0], return_counts=True)
+
+                    # Função para calcular estatísticas básicas do Mask
+                    simplified_stats = self.stats_pixel(unique, counts)
+
+                    # simplified_stats = stats.copy()
+                    # print(type(simplified_stats))
+                    # c03 = simplified_stats[0]
+                    # classfication_list.append(simplified_stats)
+                    # print(c03)
+                    code03.append(simplified_stats[0])
+                    # print(code03)
+
+                    code04.append(simplified_stats[1])
+                    code09.append(simplified_stats[2])
+                    code12.append(simplified_stats[3])
+                    code15.append(simplified_stats[4])
+                    code19.append(simplified_stats[5])
+                    code20.append(simplified_stats[6])
+                    code24.append(simplified_stats[7])
+                    code25.append(simplified_stats[8])
+                    code33.append(simplified_stats[9])
+                    # print(simplified_stats)
+                except:
+                    print('erro passou pro proximo')
+                    code03.append('nan')
+                    code04.append('nan')
+                    code09.append('nan')
+                    code12.append('nan')
+                    code15.append('nan')
+                    code19.append('nan')
+                    code20.append('nan')
+                    code24.append('nan')
+                    code25.append('nan')
+                    code33.append('nan')
+                    # classfication_list.append(['nan','nan','nan','nan','nan','nan','nan','nan','nan','nan'])
+            # df_to_save.join(pd.DataFrame())
+            # df_to_save['number_of_pixel_classification'] = classfication_list
+            # print(code03)
+            df_to_save['code03'] = code03
+            df_to_save['code04'] = code04
+            df_to_save['code09'] = code09
+            df_to_save['code12'] = code12
+            df_to_save['code15'] = code15
+            df_to_save['code19'] = code19
+            df_to_save['code20'] = code20
+            df_to_save['code24'] = code24
+            df_to_save['code25'] = code25
+            df_to_save['code33'] = code33
+            #
+            folder_to_save = pathlib.Path('{}'.format(self.path_download.value))
+            file_name = 'classification_pixel_{}to{}.csv'.format(datetime_start.strftime('%Y-%m-%d-%H-%M'),datetime_end.strftime('%Y-%m-%d-%H-%M'))
+            # print(file_name)
+            df_to_save.to_csv(folder_to_save/file_name)
+            # print(classfication_list)
+            # print(len(classfication_list))
+
+    def _button_update_heatmap(self):
+        # self.source
+        file = pathlib.Path('{}'.format(self.path_footprintStats_k15.value))
+        self.df_footprintstats = pd.read_csv(file, na_values=[-9999,'nan'], parse_dates=['TIMESTAMP','date','time'])
+
+
+        # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: print(x))
+        # print(type(self.df_footprintstats['number_of_pixel_classification'][0]))
+        # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: list(map(int, x)))
+        self.df_footprintstats['classification_percentage'] = (self.df_footprintstats['code03']+self.df_footprintstats['code04'])/(self.df_footprintstats['code03']+self.df_footprintstats['code04']+self.df_footprintstats['code09']+self.df_footprintstats['code12']+self.df_footprintstats['code15']+self.df_footprintstats['code19']+self.df_footprintstats['code20']+self.df_footprintstats['code24']+self.df_footprintstats['code25']+self.df_footprintstats['code33'])
+
+        # self.df_footprintstats['classification_percentage'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: (x[0]+x[1])/sum(x))
+        #
+        self.color_mapper_pixels.low = 0
+        self.color_mapper_pixels.high = 1
+        #
+        self.source_04.data = dict(date=self.df_footprintstats['date'],
+                                   time=self.df_footprintstats['time'],
+                                   classification_pixel=self.df_footprintstats['classification_percentage'])
+
+
+    def _teste1(self):
+        print(dt.datetime.utcfromtimestamp(self.datetime_range.value[0]/1000), dt.datetime.utcfromtimestamp(self.datetime_range.value[1]/1000))
 
 
 view_k15()
