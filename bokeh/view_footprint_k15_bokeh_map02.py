@@ -274,7 +274,7 @@ class view_k15:
 
         self.source_04 = ColumnDataSource(data=dict(date=[],time=[],classification_pixel=[]))
 
-        self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_axis_type='datetime', y_axis_type='datetime')
+        self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset")
         self.fig_04.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_04.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
         self.fig_04.axis.axis_line_color = None
@@ -283,7 +283,7 @@ class view_k15:
         # self.fig_04.rect(x=[dt.datetime(2018,1,1), dt.datetime(2018,1,2)],
         #                  y=[dt.datetime(2018,1,1,0,30), dt.datetime(2018,1,1,1,30)],
         #                  width=1000*60*60*24, height=1000*60*30, line_color=None)
-        self.color_mapper_pixels = LinearColorMapper(palette=Spectral10)
+        self.color_mapper_pixels = LinearColorMapper(palette="Magma256")
         self.fig_04.rect(x='date',
                          y='time',
                          fill_color=transform('classification_pixel', self.color_mapper_pixels),
@@ -291,6 +291,11 @@ class view_k15:
                          width=1000*60*60*24, height=1000*60*30, line_color=None)
         color_bar = ColorBar(color_mapper=self.color_mapper_pixels, ticker=BasicTicker(desired_num_ticks=len(Spectral10)),label_standoff=6, border_line_color=None, location=(0,0))
         self.fig_04.add_layout(color_bar, 'right')
+
+        self.fig_04.hover.tooltips = [
+                                      ("Acception", "@classification_pixel")
+        ]
+
 
         self.fig_04.xaxis.major_label_orientation = 1
 
