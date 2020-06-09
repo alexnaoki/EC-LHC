@@ -261,7 +261,7 @@ class view_k15:
         self.button_download = Button(label='Download', width=150, button_type='danger')
         self.button_download.on_click(self._button_download)
 
-        self.div_04_02 = Div(text=r'C:\Users\User\Mestrado\Testes\classification_pixel_2019-01-12-17-00to2019-01-31-04-00.csv')
+        self.div_04_02 = Div(text=r'C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2019-07-03-00-00.csv')
 
         self.path_footprintStats_k15 = TextInput(value='', title='Path FootprintStats K15')
         self.button_update_footprintstats = Button(label='Update')
