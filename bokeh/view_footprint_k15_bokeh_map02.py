@@ -250,27 +250,23 @@ class view_k15:
         return tab03
 
     def tab_04(self):
-        self.div_04_01 = Div(text='Teste', width=400)
+        self.div_04_01 = Div(text='In order to use this function it is necessary a file containing the number of vegetation pixels. The number of vegetation pixels are created based on Kljun et al. (2015) based on 90% of contribution', width=1200)
 
         self.datetime_range = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),
                                               end=dt.datetime(2019,1,1),
                                               value=(dt.datetime(2018,1,1), dt.datetime(2019,1,1)),
                                               step=30*60*1000, format="%d/%m/%Y %H:%M")
         # self.datetime_range.on_change('value', lambda attr, old,new:self._teste1())
-        self.path_download = TextInput(value='', title='Folder to Download')
+        self.path_download = TextInput(value='')
         self.button_download = Button(label='Download', width=150, button_type='danger')
         self.button_download.on_click(self._button_download)
 
         self.div_04_02 = Div(text=r'C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2019-07-03-00-00.csv')
 
-        self.path_footprintStats_k15 = TextInput(value='', title='Path FootprintStats K15')
-        self.button_update_footprintstats = Button(label='Update')
+        self.path_footprintStats_k15 = TextInput(value='')
+        self.button_update_footprintstats = Button(label='Update', button_type='success')
         self.button_update_footprintstats.on_click(self._button_update_heatmap)
 
-        # x_range_date = [(dt.datetime(2018,4,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
-        # y_range_date = [(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).time().strftime('%H:%M') for i in range(48)]
-        # , x_range=x_range_date, y_range=y_range_date,
-        # self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_range=x_range_date, y_range=y_range_date)
 
         self.source_04 = ColumnDataSource(data=dict(date=[],time=[],classification_pixel=[]))
 
@@ -299,13 +295,18 @@ class view_k15:
 
         self.fig_04.xaxis.major_label_orientation = 1
 
+        # tab04 = Panel(child=column(self.div_04_01,
+        #                            self.datetime_range,
+        #                            row(self.path_download, self.button_download),
+        #                            self.div_04_02,
+        #                            row(self.path_footprintStats_k15, self.button_update_footprintstats),
+        #                            self.fig_04), title='Heatmap')
+        # tab04_teste = Div()
         tab04 = Panel(child=column(self.div_04_01,
                                    self.datetime_range,
-                                   row(self.path_download, self.button_download),
+                                   row(column(Div(text='Insert Folder to Download <b>(if not found)</b>:'),row(self.path_download, self.button_download)),column(Div(text='File path FootprintStats K15:'),row(self.path_footprintStats_k15, self.button_update_footprintstats)),),
                                    self.div_04_02,
-                                   row(self.path_footprintStats_k15, self.button_update_footprintstats),
                                    self.fig_04), title='Heatmap')
-        # tab04_teste = Div()
         return tab04
 
 
