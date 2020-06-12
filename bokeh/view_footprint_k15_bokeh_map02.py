@@ -797,25 +797,13 @@ class view_k15:
         file = pathlib.Path('{}'.format(self.path_footprintStats_k15.value))
         self.df_footprintstats = pd.read_csv(file, na_values=[-9999,'nan'], parse_dates=['TIMESTAMP','date','time'])
 
-        print(self.df_footprintstats.columns)
-        # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: print(x))
-        # print(type(self.df_footprintstats['number_of_pixel_classification'][0]))
-        # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: list(map(int, x)))
         self.df_footprintstats['classification_percentage'] = (self.df_footprintstats['code03']+self.df_footprintstats['code04'])/(self.df_footprintstats['code03']+self.df_footprintstats['code04']+self.df_footprintstats['code09']+self.df_footprintstats['code12']+self.df_footprintstats['code15']+self.df_footprintstats['code19']+self.df_footprintstats['code20']+self.df_footprintstats['code24']+self.df_footprintstats['code25']+self.df_footprintstats['code33'])
 
-        # self.df_footprintstats['florest_f_percentage'] = (self.df_footprintstats['code03']/(self.df_footprintstats['code03']+self.df_footprintstats['code04']))
         self.df_footprintstats['florest_s_percentage'] = (self.df_footprintstats['code04']/(self.df_footprintstats['code03']+self.df_footprintstats['code04']))
-        print(self.df_footprintstats.loc[self.df_footprintstats['florest_s_percentage'].isnull(),['florest_s_percentage','code03','code04']])
-        # print(self.df_footprintstats.loc[(self.df_footprintstats['code03']==0)&(self.df_footprintstats['code04']==0),['florest_s_percentage']])
-        print(len(self.df_footprintstats.loc[(self.df_footprintstats['code03']==0),'code03']))
-        print(len(self.df_footprintstats.loc[(self.df_footprintstats['code04']==0),'code04']))
 
         self.df_footprintstats['resto_code'] = self.df_footprintstats['code09'] + self.df_footprintstats['code12'] +self.df_footprintstats['code15']+self.df_footprintstats['code19']+self.df_footprintstats['code20']+self.df_footprintstats['code24']+self.df_footprintstats['code25']+self.df_footprintstats['code33']
         self.df_footprintstats['pasto_percentage'] = (self.df_footprintstats['code15'])/(self.df_footprintstats['resto_code'])
-        # self.
 
-        # self.df_footprintstats['classification_percentage'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: (x[0]+x[1])/sum(x))
-        #
         self.color_mapper_pixels.low = 0
         self.color_mapper_pixels.high = 1
 
