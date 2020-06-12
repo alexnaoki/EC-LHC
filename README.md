@@ -15,4 +15,9 @@ O projeto de Mestrado apresentado na Qualificação consiste basicamente em 3 (t
 Para alcançar os objetivos listados acima é necessário a utilização de ferramentas computacionais para análise de dados.
 
 ### Análise dos dados processados pelo EddyPro
-Para realização da análise dos dados processados foi construído um [programa](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_serve01.py) capaz de visualizar os dados do balanço energético com algumas métricas, assim como, os dados de Evapotranspiração.
+
+
+
+
+
+### Análise da área de contribuição ("Footprint")
