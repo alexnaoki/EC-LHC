@@ -15,9 +15,19 @@ O projeto de Mestrado apresentado na Qualificação consiste basicamente em 3 (t
 Para alcançar os objetivos listados acima é necessário a utilização de ferramentas computacionais para análise de dados.
 
 ### Análise dos dados processados pelo EddyPro
-
-
-
-
+Descrição da análise dos dados processados pelo EddyPro
 
 ### Análise da área de contribuição ("Footprint")
+Descrição da análsie da área de contribuição
+
+### Análise do preenchimento de falhas
+Descrição da análise do preenchimento de falhas
+
+## Descrição dos códigos
+
+### Bokeh
+Para utilização dos arquivos com biblioteca Bokeh é necessário seguir algumas etapas descritas [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/info/descricao_arquivos_bokeh.md).
+
+### bqplot
+A pasta com bqplot não é mais atualizada
+> A biblioteca bqplot é interessante, porém, ela possui um performance ruim e serviu para o aprendizado de algumas ferramentas de interação.
