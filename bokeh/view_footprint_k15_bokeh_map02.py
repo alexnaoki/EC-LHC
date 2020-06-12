@@ -276,7 +276,7 @@ class view_k15:
         self.fig_04.axis.axis_line_color = None
         self.fig_04.axis.major_tick_line_color = None
 
-        self.color_mapper_pixels = LinearColorMapper(palette="Magma256")
+        self.color_mapper_pixels = LinearColorMapper(palette="Cividis256")
         self.fig_04.rect(x='date',
                          y='time',
                          fill_color=transform('classification_pixel', self.color_mapper_pixels),
@@ -292,7 +292,7 @@ class view_k15:
         self.fig_04.xaxis.major_label_orientation = 1
 
 
-        self.fig_05 = figure(title='Sub Grupo -> Proporção Formação Florestal x Formação Savânica', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
+        self.fig_05 = figure(title='Sub Grupo -> Proporção Formação Savânica x Formação Florestal', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
                              x_range=self.fig_04.x_range, y_range=self.fig_04.y_range)
         self.fig_05.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_05.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
