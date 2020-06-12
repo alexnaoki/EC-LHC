@@ -1,7 +1,7 @@
 from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import Slider, ColumnDataSource, Button, Tabs, Panel, DateSlider, Range1d, Div, TextInput, Select, Panel, DateRangeSlider,Legend, LegendItem,DatetimeTickFormatter,BasicTicker, LinearColorMapper,ColorBar
-from bokeh.layouts import column, row, layout
+from bokeh.layouts import column, row, layout, gridplot
 from bokeh.tile_providers import ESRI_IMAGERY, get_provider
 from bokeh.transform import cumsum, transform
 from bokeh.palettes import Spectral10
@@ -299,7 +299,7 @@ class view_k15:
         self.fig_05.axis.axis_line_color = None
         self.fig_05.axis.major_tick_line_color = None
 
-        self.color_mapper_florest = LinearColorMapper(palette="Viridis256")
+        self.color_mapper_florest = LinearColorMapper(palette='Viridis256')
         self.fig_05.rect(x='date',
                          y='time',
                          fill_color=transform('florest_s_percentage', self.color_mapper_florest),
@@ -339,19 +339,17 @@ class view_k15:
                                       ("Resto code","@resto_code")
         ]
 
-        # tab04 = Panel(child=column(self.div_04_01,
-        #                            self.datetime_range,
-        #                            row(self.path_download, self.button_download),
-        #                            self.div_04_02,
-        #                            row(self.path_footprintStats_k15, self.button_update_footprintstats),
-        #                            self.fig_04), title='Heatmap')
-        # tab04_teste = Div()
+
+        self.fig_04.toolbar.autohide = True
+        self.fig_05.toolbar.autohide = True
+        self.fig_06.toolbar.autohide = True
+
         tab04 = Panel(child=column(self.div_04_01,
                                    self.datetime_range,
                                    row(column(Div(text='Insert Folder to Download <b>(if not found)</b>:'),row(self.path_download, self.button_download)),column(Div(text='File path FootprintStats K15:'),row(self.path_footprintStats_k15, self.button_update_footprintstats)),),
                                    self.div_04_02,
-                                   self.fig_04,
-                                   row(self.fig_05, self.fig_06)), title='Heatmap')
+                                   layout([[self.fig_04],[self.fig_05, self.fig_06]])), title='Heatmap')
+
         return tab04
 
 
