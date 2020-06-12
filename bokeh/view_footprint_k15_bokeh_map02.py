@@ -292,7 +292,7 @@ class view_k15:
         self.fig_04.xaxis.major_label_orientation = 1
 
 
-        self.fig_05 = figure(title='Sub Grupo -> Proporção Formação Savânica x Formação Florestal', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
+        self.fig_05 = figure(title='Subset -> Proporção Formação Savânica x Formação Florestal', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
                              x_range=self.fig_04.x_range, y_range=self.fig_04.y_range)
         self.fig_05.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_05.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
@@ -316,7 +316,7 @@ class view_k15:
                                       ("Resto code","@resto_code")
         ]
 
-        self.fig_06 = figure(title='Sub Grupo -> Proporção Pasto x Resto', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
+        self.fig_06 = figure(title='Subset -> Proporção Pasto x Resto', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
                              x_range=self.fig_04.x_range, y_range=self.fig_04.y_range)
         self.fig_06.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_06.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
