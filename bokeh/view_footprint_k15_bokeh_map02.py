@@ -268,17 +268,14 @@ class view_k15:
         self.button_update_footprintstats.on_click(self._button_update_heatmap)
 
 
-        self.source_04 = ColumnDataSource(data=dict(date=[],time=[],classification_pixel=[]))
+        self.source_04 = ColumnDataSource(data=dict(date=[],time=[],classification_pixel=[], wind_dir=[], florest_s_percentage=[],pasto_percentage=[],code03=[],code04=[],code15=[],resto_code=[]))
 
-        self.fig_04 = figure(title='Stats Footprint', plot_height=500, plot_width=1200,x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset")
+        self.fig_04 = figure(title='Aceitação -> # Floresta Natural / # Total', plot_height=350, plot_width=1200,x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap")
         self.fig_04.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_04.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
         self.fig_04.axis.axis_line_color = None
         self.fig_04.axis.major_tick_line_color = None
 
-        # self.fig_04.rect(x=[dt.datetime(2018,1,1), dt.datetime(2018,1,2)],
-        #                  y=[dt.datetime(2018,1,1,0,30), dt.datetime(2018,1,1,1,30)],
-        #                  width=1000*60*60*24, height=1000*60*30, line_color=None)
         self.color_mapper_pixels = LinearColorMapper(palette="Magma256")
         self.fig_04.rect(x='date',
                          y='time',
@@ -289,11 +286,58 @@ class view_k15:
         self.fig_04.add_layout(color_bar, 'right')
 
         self.fig_04.hover.tooltips = [
-                                      ("Acception", "@classification_pixel")
+                                      ("Acception", "@classification_pixel"),
+                                      ("Wind Direction", "@wind_dir")
+        ]
+        self.fig_04.xaxis.major_label_orientation = 1
+
+
+        self.fig_05 = figure(title='Sub Grupo -> Proporção Formação Florestal x Formação Savânica', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
+                             x_range=self.fig_04.x_range, y_range=self.fig_04.y_range)
+        self.fig_05.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
+        self.fig_05.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
+        self.fig_05.axis.axis_line_color = None
+        self.fig_05.axis.major_tick_line_color = None
+
+        self.color_mapper_florest = LinearColorMapper(palette="Viridis256")
+        self.fig_05.rect(x='date',
+                         y='time',
+                         fill_color=transform('florest_s_percentage', self.color_mapper_florest),
+                         source=self.source_04,
+                         width=1000*60*60*24, height=1000*60*30,  line_color=None)
+        color_bar02 = ColorBar(color_mapper=self.color_mapper_florest, ticker=BasicTicker(desired_num_ticks=len(Spectral10)), label_standoff=6, border_line_color=None, location=(0,0))
+        self.fig_05.add_layout(color_bar02, 'right')
+
+        self.fig_05.hover.tooltips = [
+                                      ("Florest S Percentage", "@florest_s_percentage"),
+                                      ("Wind Direction", "@wind_dir"),
+                                      ("Code03","@code03"),
+                                      ("Code04","@code04"),
+                                      ("Resto code","@resto_code")
         ]
 
+        self.fig_06 = figure(title='Sub Grupo -> Proporção Pasto x Resto', plot_height=225, plot_width=600, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap",
+                             x_range=self.fig_04.x_range, y_range=self.fig_04.y_range)
+        self.fig_06.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
+        self.fig_06.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
+        self.fig_06.axis.axis_line_color = None
+        self.fig_06.axis.major_tick_line_color = None
 
-        self.fig_04.xaxis.major_label_orientation = 1
+        self.color_mapper_pasto = LinearColorMapper(palette="Viridis256")
+        self.fig_06.rect(x='date',
+                         y='time',
+                         fill_color=transform('pasto_percentage', self.color_mapper_pasto),
+                         source=self.source_04,
+                         width=1000*60*60*24, height=1000*60*30,  line_color=None)
+        color_bar03 = ColorBar(color_mapper=self.color_mapper_pasto, ticker=BasicTicker(desired_num_ticks=len(Spectral10)), label_standoff=6, border_line_color=None, location=(0,0))
+        self.fig_06.add_layout(color_bar02, 'right')
+
+        self.fig_06.hover.tooltips = [
+                                      ("Pasto Percentage", "@pasto_percentage"),
+                                      ("Wind Direction", "@wind_dir"),
+                                      ("Code15", "@code15"),
+                                      ("Resto code","@resto_code")
+        ]
 
         # tab04 = Panel(child=column(self.div_04_01,
         #                            self.datetime_range,
@@ -306,7 +350,8 @@ class view_k15:
                                    self.datetime_range,
                                    row(column(Div(text='Insert Folder to Download <b>(if not found)</b>:'),row(self.path_download, self.button_download)),column(Div(text='File path FootprintStats K15:'),row(self.path_footprintStats_k15, self.button_update_footprintstats)),),
                                    self.div_04_02,
-                                   self.fig_04), title='Heatmap')
+                                   self.fig_04,
+                                   row(self.fig_05, self.fig_06)), title='Heatmap')
         return tab04
 
 
@@ -754,20 +799,41 @@ class view_k15:
         file = pathlib.Path('{}'.format(self.path_footprintStats_k15.value))
         self.df_footprintstats = pd.read_csv(file, na_values=[-9999,'nan'], parse_dates=['TIMESTAMP','date','time'])
 
-
+        print(self.df_footprintstats.columns)
         # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: print(x))
         # print(type(self.df_footprintstats['number_of_pixel_classification'][0]))
         # self.df_footprintstats['number_of_pixel_classification'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: list(map(int, x)))
         self.df_footprintstats['classification_percentage'] = (self.df_footprintstats['code03']+self.df_footprintstats['code04'])/(self.df_footprintstats['code03']+self.df_footprintstats['code04']+self.df_footprintstats['code09']+self.df_footprintstats['code12']+self.df_footprintstats['code15']+self.df_footprintstats['code19']+self.df_footprintstats['code20']+self.df_footprintstats['code24']+self.df_footprintstats['code25']+self.df_footprintstats['code33'])
 
+        # self.df_footprintstats['florest_f_percentage'] = (self.df_footprintstats['code03']/(self.df_footprintstats['code03']+self.df_footprintstats['code04']))
+        self.df_footprintstats['florest_s_percentage'] = (self.df_footprintstats['code04']/(self.df_footprintstats['code03']+self.df_footprintstats['code04']))
+        print(self.df_footprintstats.loc[self.df_footprintstats['florest_s_percentage'].isnull(),['florest_s_percentage','code03','code04']])
+        # print(self.df_footprintstats.loc[(self.df_footprintstats['code03']==0)&(self.df_footprintstats['code04']==0),['florest_s_percentage']])
+        print(len(self.df_footprintstats.loc[(self.df_footprintstats['code03']==0),'code03']))
+        print(len(self.df_footprintstats.loc[(self.df_footprintstats['code04']==0),'code04']))
+
+        self.df_footprintstats['resto_code'] = self.df_footprintstats['code09'] + self.df_footprintstats['code12'] +self.df_footprintstats['code15']+self.df_footprintstats['code19']+self.df_footprintstats['code20']+self.df_footprintstats['code24']+self.df_footprintstats['code25']+self.df_footprintstats['code33']
+        self.df_footprintstats['pasto_percentage'] = (self.df_footprintstats['code15'])/(self.df_footprintstats['resto_code'])
+        # self.
+
         # self.df_footprintstats['classification_percentage'] = self.df_footprintstats['number_of_pixel_classification'].apply(lambda x: (x[0]+x[1])/sum(x))
         #
         self.color_mapper_pixels.low = 0
         self.color_mapper_pixels.high = 1
+
+        self.color_mapper_florest.low = 0
+        self.color_mapper_florest.high = 1
         #
         self.source_04.data = dict(date=self.df_footprintstats['date'],
                                    time=self.df_footprintstats['time'],
-                                   classification_pixel=self.df_footprintstats['classification_percentage'])
+                                   classification_pixel=self.df_footprintstats['classification_percentage'],
+                                   wind_dir=self.df_footprintstats['wind_dir_compass'],
+                                   florest_s_percentage=self.df_footprintstats['florest_s_percentage'],
+                                   pasto_percentage=self.df_footprintstats['pasto_percentage'],
+                                   code03=self.df_footprintstats['code03'],
+                                   code04=self.df_footprintstats['code04'],
+                                   code15=self.df_footprintstats['code15'],
+                                   resto_code=self.df_footprintstats['resto_code'])
 
 
     def _teste1(self):
