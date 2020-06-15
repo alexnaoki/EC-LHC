@@ -13,14 +13,12 @@ import numpy as np
 import datetime as dt
 from scipy.stats import linregress
 
-class teste01:
+class view_files:
     def __init__(self):
-        # output_file('teste.html')
         print('entrou')
-
         self.ep_columns_filtered = ['date','time',  'H', 'qc_H', 'LE', 'qc_LE','sonic_temperature', 'air_temperature', 'air_pressure', 'air_density',
- 'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed', 'max_wind_speed', 'wind_dir', 'u*', '(z-d)/L',
-  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var','H_strg','LE_strg']
+                                     'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed', 'max_wind_speed',
+                                     'wind_dir', 'u*', '(z-d)/L',  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var','H_strg','LE_strg']
 
         self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg',
                                     'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg', 'amb_press_mean', 'Tc_mean', 'rho_a_mean','CO2_sig_strgth_mean',
@@ -28,23 +26,73 @@ class teste01:
                                      'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg', 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg',
                                       'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'precip_Tot', 'panel_tmpr_Avg']
 
-        self.TOOLS="pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
 
+        self.TOOLS_01 = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
 
         self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03()])
+
+
+        curdoc().add_root(self.tabs)
+
+
+    def tab_01(self):
+        self.p01 = Div(text=r"""C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01""", width=500)
+
+        self.path = TextInput(value='', title='EP Path:')
+        self.path.on_change('value', self._textInput)
+
+        self.select_config = Select(title='Configs:', value=None, options=[])
+        self.select_config.on_change('value', self._select_config)
+
+        tab01 = Panel(child=column(self.p01, self.path, self.select_config), title='EP')
+
+        return tab01
+
+    def tab_02(self):
+        self.p02 = Div(text=r"""C:\Users\User\Mestrado\Dados_brutos""", width=500)
+
+        self.path2 = TextInput(value='', title='LF Path:')
+        self.path2.on_change('value', self._textInput)
+
+        self.html_lf = Div(text='Sem dados', width=500)
+
+        tab02 = Panel(child=column(self.p02, self.path2, self.html_lf), title='LF')
+        return tab02
+
+
+    def tab_03(self):
+        self.button_plot = Button(label='Plot')
+        self.button_plot.on_click(self._button_plot)
+
+        self.slider_signalStrFilter = Slider(start=0, end=1, value=0, step=0.01, title='')
+
+        self.checkbox_flag = CheckboxButtonGroup(labels=['0', '1', '2'], active=[0,1,2])
+        self.checkbox_flag.on_click(self._button_plot_click)
+
+        self.checkbox_rain = CheckboxGroup(labels=['Rain Filter'])
+        self.checkbox_rain.on_click(self._button_plot_click)
+
+        self.daterangeslider = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),end=dt.datetime(2019,1,1), value=(dt.datetime(2017, 9, 7), dt.datetime(2017, 10, 15)), step=24*60*60*1000, format="%d/%m/%Y")
+
+        self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
+
+        controls = [self.slider_signalStrFilter, self.daterangeslider, self.timerangeslider]
+        for control in controls:
+            control.on_change('value_throttled', lambda attr, old, new:self.update_01())
 
         self.source_01 = ColumnDataSource(data=dict(x=[], y=[], y02=[], date=[], time=[], ET=[]))
 
         self.source_02 = ColumnDataSource(data=dict(x=[], y=[],text01=[]))
 
         # Figure 01 (EP)
-        self.fig_01 = figure(title='EP', plot_height=250, plot_width=700, x_axis_type='datetime', tools=self.TOOLS)
+        self.fig_01 = figure(title='EP', plot_height=250, plot_width=700, x_axis_type='datetime', tools=self.TOOLS_01)
         circle_ep = self.fig_01.circle(x='x', y='y', source=self.source_01)
         #####
 
         # Figure 02 (LF)
-        self.fig_02 = figure(title='LF', plot_height=250, plot_width=700, x_axis_type='datetime', x_range=self.fig_01.x_range,tools=self.TOOLS)
+        self.fig_02 = figure(title='LF', plot_height=250, plot_width=700, x_axis_type='datetime', x_range=self.fig_01.x_range,tools=self.TOOLS_01)
         circle_lf = self.fig_02.circle(x='x', y='y02', source=self.source_01, color='red')
+        circle_lf.data_source.selected.on_change('indices', self._teste_selection)
         #####
 
         # Figure 03 (EP x LF)
@@ -63,19 +111,13 @@ class teste01:
         ######
 
         # Figure 04 (ET)
-        # x_range_date = [(dt.datetime(2018,4,1) + dt.timedelta(days=i)).date().strftime('%Y-%m-%d') for i in range(1,720)]
-        # y_range_time = [(dt.datetime(2000,1,1) + dt.timedelta(minutes=i*30)).time().strftime('%H:%M') for i in range(48)]
-        # self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_range=x_range_date, y_range=y_range_time)
-        self.fig_04 = figure(title='ET', plot_height=500, plot_width=1200, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap")
+        self.fig_04 = figure(title='ET', plot_height=350, plot_width=1200, x_axis_type='datetime', y_axis_type='datetime', tools="hover,pan,wheel_zoom,box_zoom,reset,box_select,tap")
         self.fig_04.xaxis[0].formatter = DatetimeTickFormatter(days=["%d/%m/%Y"])
         self.fig_04.yaxis[0].formatter = DatetimeTickFormatter(days=["%H:%M"], hours=["%H:%M"])
 
         colors = ['#440154', '#404387', '#29788E', '#22A784', '#79D151', '#FDE724']
         self.color_mapper = LinearColorMapper(palette=colors)
 
-        # circle_et = self.fig_04.circle(x='x', y='ET', source=self.source_01, color='black')
-
-        # self.et = self.fig_04.rect(x='date', y='time', fill_color=transform('ET', self.color_mapper), source=self.source_01, width=1, height=1, line_color=None)
         self.et = self.fig_04.rect(x='date', y='time', fill_color=transform('ET', self.color_mapper), source=self.source_01, width=1000*60*60*24, height=1000*60*30, line_color=None)
         color_bar = ColorBar(color_mapper=self.color_mapper, ticker=BasicTicker(desired_num_ticks=len(colors)),label_standoff=6, border_line_color=None, location=(0,0))
         self.fig_04.add_layout(color_bar, 'right')
@@ -90,69 +132,31 @@ class teste01:
 
 
         self.fig_04.xaxis.major_label_orientation = 1
-        # self.fig_04.xaxis.axis_label_text_font_size = '8pt'
-        # self.fig_04.xaxis[0].ticker.desired_num_ticks = 10
-
-        #####
 
 
-        c02 = column([self.fig_01, self.fig_02])
-
-        curdoc().add_root(column(self.tabs, row(c02, self.fig_03), self.fig_04))
-        # show(button)
-
-    def tab_01(self):
-        self.p01 = Paragraph(text=r"""C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01""", width=500)
-
-        self.path = TextInput(value='', title='EP Path:')
-        self.path.on_change('value', self._textInput)
-
-        self.select_config = Select(title='Configs:', value=None, options=[])
-        self.select_config.on_change('value', self._select_config)
-
-        tab01 = Panel(child=column(self.p01, self.path, self.select_config), title='EP')
-
-        return tab01
-
-    def tab_02(self):
-        self.p02 = Paragraph(text=r"""C:\Users\User\Mestrado\Dados_brutos""", width=500)
-
-        self.path2 = TextInput(value='', title='LF Path:')
-        self.path2.on_change('value', self._textInput)
-
-        self.html_lf = Div(text='Sem dados', width=500)
-
-        tab02 = Panel(child=column(self.p02, self.path2, self.html_lf), title='LF')
-        return tab02
-
-    def tab_03(self):
-        self.button_plot = Button(label='Plot')
-        self.button_plot.on_click(self._button_plot)
-
-        self.slider_signalStrFilter = Slider(start=0, end=1, value=0, step=0.01, title='Signal Strength')
-
-        self.checkbox_flag = CheckboxButtonGroup(labels=['0', '1', '2'], active=[0,1,2])
-        self.checkbox_flag.on_click(self._button_plot_click)
-
-        self.checkbox_rain = CheckboxGroup(labels=['Rain Filter'])
-        self.checkbox_rain.on_click(self._button_plot_click)
-
-        self.daterangeslider = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),end=dt.datetime(2019,1,1), value=(dt.datetime(2017, 9, 7), dt.datetime(2017, 10, 15)), step=24*60*60*1000, format="%d/%m/%Y")
-
-        self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
 
 
-        controls = [self.slider_signalStrFilter, self.daterangeslider, self.timerangeslider]
-        for control in controls:
-            control.on_change('value_throttled', lambda attr, old, new:self.update_01())
-
-
+        #
+        # tab03 = Panel(child=column(self.button_plot,
+        #                            column(row(Div(text='Signal Str'), Div(text='Mauder and Foken Flag'), Div(text='Aditional Filters')),
+        #                                   row(self.slider_signalStrFilter, self.checkbox_flag,self.checkbox_rain)),
+        #                            self.daterangeslider,
+        #                            self.timerangeslider,
+        #                            row(column(self.fig_01,
+        #                                       self.fig_02), self.fig_03),
+        #                            self.fig_04), title='Plot')
+# column(row(Div(text='Signal Str'), Div(text='Mauder and Foken Flag'), Div(text='Aditional Filters')),
         tab03 = Panel(child=column(self.button_plot,
-                                   self.slider_signalStrFilter,
-                                   self.checkbox_flag,
-                                   self.checkbox_rain, column(self.daterangeslider), self.timerangeslider), title='Plot')
-
+                                   row(column(Div(text='<b>Signal Str</b>'),self.slider_signalStrFilter),
+                                       column(Div(text='<b>Mauder and Foken Flag</b>'),self.checkbox_flag),
+                                       column(Div(text='<b>Aditional Filters</b>'),self.checkbox_rain)),
+                                   self.daterangeslider,
+                                   self.timerangeslider,
+                                   row(column(self.fig_01,
+                                              self.fig_02), self.fig_03),
+                                   self.fig_04), title='Plot')
         return tab03
+
 
     def _textInput(self, attr, old, new):
 
@@ -207,14 +211,6 @@ class teste01:
         self.dfs_compare['date_ns'] = pd.to_datetime(self.dfs_compare['date'])
         self.dfs_compare['time_ns'] = pd.to_datetime(self.dfs_compare['time'])
 
-        # self.fig_04.x_range = self.dfs_compare['date'].unique()
-        # self.fig_04.y_range = self.dfs_compare['time'].unique()
-        # self.fig_04.y_range = range(5)
-        # self.fig_04.x_range.factors = []
-        # self.fig_04.x_range.factors = self.dfs_compare['date'].unique()
-        #
-        # self.fig_04.y_range.factors = []
-        # self.fig_04.y_range.factors = self.dfs_compare['time'].unique()
 
         self.update_01()
 
@@ -295,8 +291,26 @@ class teste01:
     def _button_plot_click(self, new):
         self.update_01()
 
-    def _teste(self):
-        pass
+    def _teste_selection(self, attr, old, new):
+        print(self.source_01.selected.indices)
 
+        # print(self.df_filter['Rn_Avg'].iloc[self.source_01.selected.indices] -self.df_filter[['shf_Avg(1)','shf_Avg(2)']].iloc[self.source_01.selected.indices].mean(axis=1))
 
-teste01()
+        df_selected = self.df_filter[['Rn_Avg','H','LE','H_strg','LE_strg','shf_Avg(1)','shf_Avg(2)']].iloc[self.source_01.selected.indices]
+        print(df_selected)
+
+        df_selected_corr = pd.DataFrame()
+        df_selected_corr['EP'] = df_selected[['H','LE','H_strg','LE_strg']].sum(axis=1, min_count=1)
+        df_selected_corr['LF'] = df_selected['Rn_Avg'] - df_selected[['shf_Avg(1)','shf_Avg(2)']].mean(axis=1)
+        df_selected_corr.dropna(inplace=True)
+        # linear_regression
+        x = np.array(df_selected_corr['LF'].to_list())
+        x1 = x[:, np.newaxis]
+        fit_linear = np.linalg.lstsq(x1, df_selected_corr['EP'], rcond=None)[0][0]
+
+        pearson_corr = df_selected_corr.corr(method='pearson')['LF'][0]
+
+        print(pearson_corr)
+        print(fit_linear)
+
+view_files()
