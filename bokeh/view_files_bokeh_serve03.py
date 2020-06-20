@@ -7,7 +7,10 @@ from bokeh.transform import transform
 from bokeh.models import DateRangeSlider
 
 
-import pathlib
+import pathlib, sys
+sys.path.append(str(pathlib.Path(r'C:\Users\User\Mestrado\Penman_monteith')))
+from radiation02 import Radiation
+
 import pandas as pd
 import numpy as np
 import datetime as dt
@@ -15,6 +18,7 @@ from scipy.stats import linregress
 
 class view_files:
     def __init__(self):
+        # self.radiation = Radiation()
         print('entrou')
         self.ep_columns_filtered = ['date','time',  'H', 'qc_H', 'LE', 'qc_LE','sonic_temperature', 'air_temperature', 'air_pressure', 'air_density',
                                      'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed', 'max_wind_speed',
@@ -29,7 +33,7 @@ class view_files:
 
         self.TOOLS_01 = "pan,wheel_zoom,box_zoom,box_select,lasso_select,reset"
 
-        self.tabs = Tabs(tabs=[self.tab_01()])
+        self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02()])
 
 
 
@@ -66,6 +70,11 @@ class view_files:
 
         self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
 
+        self.text_save_df = TextInput(value='', title='Insert path to save')
+        self.save_df = Button(label='Save Dataframe')
+        self.save_df.on_click(self._button_save)
+
+
         controls = [self.slider_signalStrFilter, self.daterangeslider, self.timerangeslider]
         for control in controls:
             control.on_change('value_throttled', lambda attr, old, new:self.update_01())
@@ -82,7 +91,9 @@ class view_files:
                       self.checkbox_flag,
                       self.checkbox_rain,
                       self.daterangeslider,
-                      self.timerangeslider)
+                      self.timerangeslider,
+                      self.text_save_df,
+                      self.save_df)
 
     def tab_01(self):
 
@@ -146,6 +157,19 @@ class view_files:
                                    self.fig_04), title='Energy Balance')
         return tab01
 
+    def tab_02(self):
+        self.select_lf_column = Select(title='LF Radiation Column', value=None, options=[])
+        self.select_lf_column.on_change('value', self._select_lf_column)
+        self.source_03 = ColumnDataSource(data=dict(x=[], y=[], rad=[]))
+
+        self.fig_05 = figure(title='LF radiation', plot_height=350, plot_width=1200, x_axis_type='datetime')
+        radiation_circle = self.fig_05.circle(x='x',y='y', source=self.source_03)
+
+        erad = self.fig_05.circle(x='x', y='rad', source=self.source_03, color='red')
+
+        tab02 = Panel(child=column(self.select_lf_column,self.fig_05), title='Radiation')
+
+        return tab02
 
     def _textInput_EP(self, attr, old,new):
         try:
@@ -177,7 +201,6 @@ class view_files:
             self.html_lf.text = 'Erro, insira outro Path'
             print('erro2')
 
-
     def _select_config_EP(self, attr, old, new):
         print(new)
 
@@ -199,7 +222,15 @@ class view_files:
         self.dfs_compare['date_ns'] = pd.to_datetime(self.dfs_compare['date'])
         self.dfs_compare['time_ns'] = pd.to_datetime(self.dfs_compare['time'])
 
+        self.select_lf_column.options = ['TIMESTAMP', 'amb_tmpr_Avg', 'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg', 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg',
+         'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'e', 'es']
 
+        self.radiation = Radiation(lat_degree=-23, date=self.dfs_compare['TIMESTAMP'].dt.date.to_list())
+        # print(self.radiation.output())
+        # self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg',
+        #                             'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg','Tc_mean'
+        #                              'Rn_Avg', 'albedo_Avg', 'Rs_incoming_Avg', 'Rs_outgoing_Avg', 'Rl_incoming_Avg', 'Rl_outgoing_Avg', 'Rl_incoming_meas_Avg',
+        #                               'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)']
         self.update_01()
 
     def filter_flag(self):
@@ -277,7 +308,6 @@ class view_files:
 
     def _selection_energybalance(self, attr, old, new):
         try:
-
             df_selected = self.df_filter[['Rn_Avg','H','LE','H_strg','LE_strg','shf_Avg(1)','shf_Avg(2)']].iloc[self.source_01.selected.indices]
 
             df_selected_corr = pd.DataFrame()
@@ -295,10 +325,27 @@ class view_files:
             self.source_02.data = dict(x=[np.nanmin(self.df_corr['LF'])],
                                        y=[np.nanmax(self.df_corr['EP'])],
                                        text01=['Pearson: {:.4f}\nSlope: {:.4f}\ny = {:.4f}x + {:.4f}'.format(pearson_corr, fit_linear,linear_regression[0],linear_regression[1])])
+            self.slope_fit.gradient = fit_linear
+
             print(pearson_corr)
             print(fit_linear)
             print(linear_regression[0],linear_regression[1])
         except:
             print('sem selecao')
+
+    def _select_lf_column(self, attr, old, new):
+        print(self.select_lf_column.value)
+
+        self.fig_05.xaxis.axis_label = 'TIMESTAMP'
+        self.fig_05.yaxis.axis_label = self.select_lf_column.value
+        self.source_03.data = dict(x=self.dfs_compare['TIMESTAMP'],
+                                   y=self.dfs_compare[self.select_lf_column.value],
+                                   rad=self.radiation.output()[1]*11.57)
+
+
+    def _button_save(self):
+        print(self.text_save_df.value)
+        path = pathlib.Path('{}'.format(self.text_save_df.value))
+        self.df_filter.to_csv(path/'df_filter.csv')
 
 view_files()
