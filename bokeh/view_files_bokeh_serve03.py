@@ -152,6 +152,13 @@ class view_files:
 
         self.fig_04.xaxis.major_label_orientation = 1
 
+        self.fig_01.toolbar.autohide = True
+        self.fig_02.toolbar.autohide = True
+        self.fig_03.toolbar.autohide = True
+        self.fig_04.toolbar.autohide = True
+
+
+
         tab01 = Panel(child=column(row(column(self.fig_01,
                                               self.fig_02), self.fig_03),
                                    self.fig_04), title='Energy Balance')
