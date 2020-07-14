@@ -226,6 +226,9 @@ class view_files:
          'Rl_outgoing_meas_Avg', 'shf_Avg(1)', 'shf_Avg(2)', 'e', 'es']
 
         self.radiation = Radiation(lat_degree=-23, date=self.dfs_compare['TIMESTAMP'].dt.date.to_list())
+
+        self.dfs_compare_copy = self.dfs_compare.copy()
+
         # print(self.radiation.output())
         # self.lf_columns_filtered = ['TIMESTAMP','Hs','u_star','Ts_stdev','Ux_stdev','Uy_stdev','Uz_stdev','Ux_Avg', 'Uy_Avg', 'Uz_Avg',
         #                             'Ts_Avg', 'LE_wpl', 'Hc','H2O_mean', 'amb_tmpr_Avg','Tc_mean'
@@ -248,16 +251,32 @@ class view_files:
                 (self.dfs_compare['TIMESTAMP'].dt.time >= start_time) &
                 (self.dfs_compare['TIMESTAMP'].dt.time <= end_time)
             ]
+
+            # self.dfs_compare_copy.loc[
+            #     (self.dfs_compare_copy['H2O_sig_strgth_mean'] >= self.slider_signalStrFilter.value) &
+            #     (self.dfs_compare_copy['TIMESTAMP'].dt.date >= start_date) &
+            #     (self.dfs_compare_copy['TIMESTAMP'].dt.date <= end_date) &
+            #     (self.dfs_compare_copy['TIMESTAMP'].dt.time >= start_time) &
+            #     (self.dfs_compare_copy['TIMESTAMP'].dt.time <= end_time), 'ET'] = np.nan
+            # self.dfs_compare_copy.loc[(self.dfs_compare_copy['H2O_sig_strgth_mean'] <= self.slider_signalStrFilter.value)] = np.nan
         except:
             print('erro')
             flag = self.dfs_compare[
                 (self.dfs_compare['H2O_sig_strgth_mean'] >= self.slider_signalStrFilter.value)
             ]
+            self.dfs_compare_copy.loc[
+                (self.dfs_compare_copy['H2O_sig_strgth_mean'] <= self.slider_signalStrFilter.value), 'ET'] = np.nan
 
         if self.checkbox_rain.active == [0]:
             flag = flag[flag['precip_Tot']==0]
+            self.dfs_compare_copy.loc[(self.dfs_compare_copy['precip_Tot']!=0), 'ET'] = np.nan
 
         flag = flag[flag[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)==2]
+
+        self.dfs_compare_copy.loc[self.dfs_compare_copy[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)!=2,'ET'] = np.nan
+
+        # print(self.dfs_compare_copy.loc[self.dfs_compare_copy['qc_H']==2, 'ET'])
+
 
         return flag
 
@@ -347,5 +366,6 @@ class view_files:
         print(self.text_save_df.value)
         path = pathlib.Path('{}'.format(self.text_save_df.value))
         self.df_filter.to_csv(path/'df_filter.csv')
+        self.dfs_compare_copy.to_csv(path/'dfs_compare.csv')
 
 view_files()
