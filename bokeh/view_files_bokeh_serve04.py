@@ -40,7 +40,8 @@ class view_files:
         curdoc().add_root(row(self.sidebar_01(),self.tabs))
 
     def sidebar_01(self):
-        self.p01 = Div(text=r"""C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01""", width=100,style={'font-size': '75%'})
+        # self.p01 = Div(text=r"""C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01""", width=100,style={'font-size': '75%'})
+        self.p01 = Div(text=r"""G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203""", width=100,style={'font-size': '75%'})
 
         self.path = TextInput(value='', title='Insert EP Path:')
         self.path.on_change('value', self._textInput_EP)

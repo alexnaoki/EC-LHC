@@ -50,7 +50,8 @@ class view_k15:
         '''
         O tab_01 tem por objetivo inserir os dados do EddyPro
         '''
-        self.div_01 = Div(text=r'C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01', width=500)
+        # self.div_01 = Div(text=r'C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01', width=500)
+        self.div_01 = Div(text=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203', width=500)
 
         # Widgets e aplicação das funções no tab_01
         self.path_ep = TextInput(value='', title='EP Path:')
@@ -383,6 +384,7 @@ class view_k15:
                                                  keep_date_col=True,
                                                  usecols=self.ep_columns_filtered))
         self.df_ep = pd.concat(dfs_single_config)
+        self.df_ep.dropna(inplace=True)
         print('ok')
 
     def update_ffp(self):
@@ -473,6 +475,7 @@ class view_k15:
                 (self.df_ep['TIMESTAMP'].dt.time <= end_time),
                 ['u_rot','L','u*', 'v_var','wind_dir_compass']
             ]
+            print(inputs_to_k15)
 
             # Output para o footprint de Kljun et al. (2015)
             out = self.k15_climatology.output(zm=9,
@@ -485,6 +488,9 @@ class view_k15:
                                               rs=[0.3, 0.9], crop=False, fig=False)
 
             # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
+            print(np.shape(out['xr']), np.shape(out['yr']))
+            print('XR', out['xr'])
+            print('YR', out['yr'])
             poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out['xr'][-1], out['yr'][-1])]
             poly_shp = Polygon(poly)
 
