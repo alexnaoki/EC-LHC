@@ -71,12 +71,19 @@ class view_files:
 
         self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
 
+        self.path_footprint = TextInput(value='', title='Insert Footprint Path')
+        self.path_footprint.on_change('value', self._textInput_footprint)
+        self.checkbox_footprint = CheckboxGroup(labels=['Footprint'])
+        self.checkbox_footprint.on_click(self._button_plot_click)
+        self.slider_footprint = Slider(start=0, end=1, value=0, step=0.01, title='Footprint Acceptance')
+
+
         self.text_save_df = TextInput(value='', title='Insert path to save')
         self.save_df = Button(label='Save Dataframe')
         self.save_df.on_click(self._button_save)
 
 
-        controls = [self.slider_signalStrFilter, self.daterangeslider, self.timerangeslider]
+        controls = [self.slider_signalStrFilter, self.daterangeslider, self.timerangeslider, self.slider_footprint]
         for control in controls:
             control.on_change('value_throttled', lambda attr, old, new:self.update_01())
 
@@ -93,6 +100,8 @@ class view_files:
                       self.checkbox_rain,
                       self.daterangeslider,
                       self.timerangeslider,
+                      self.path_footprint,
+                      gridplot([[self.checkbox_footprint], [self.slider_footprint]],toolbar_options=dict(logo=None)),
                       self.text_save_df,
                       self.save_df)
 
@@ -165,6 +174,7 @@ class view_files:
                                    self.fig_04), title='Energy Balance')
         return tab01
 
+
     def tab_02(self):
         self.select_lf_column = Select(title='LF Radiation Column', value=None, options=[])
         self.select_lf_column.on_change('value', self._select_lf_column)
@@ -211,8 +221,19 @@ class view_files:
 
     def _textInput_footprint(self, attr, old, new):
         try:
+            self.footprint_columns = ['TIMESTAMP','code03', 'code04', 'code09','code12','code15','code19','code20','code24','code25','code33']
             self.folder_path_footprint = pathlib.Path(new)
-            footprint_df = pd.read_csv(sel.folder_path_footprint, delimiter=',')
+            self.footprint_df = pd.read_csv(self.folder_path_footprint, parse_dates=['TIMESTAMP'], na_values=-9999, usecols=self.footprint_columns)
+            # print(self.footprint_df.columns)
+            # ,parse_dates=['TIMESTAMP'], na_values=-9999, usecols=self.footprint_columns
+            # print(self.footprint_df)
+            self.footprint_df.dropna(inplace=True)
+            print(self.footprint_df)
+            # print(self.dfs_compare_copy['TIMESTAMP'].min(),self.dfs_compare_copy['TIMESTAMP'].max())
+            self.dfs_compare = pd.merge(left=self.dfs_compare, right=self.footprint_df, on='TIMESTAMP', how='outer')
+            self.dfs_compare['footprint_aceptance'] = self.dfs_compare[['code03','code04']].sum(axis=1)/self.dfs_compare[['code03','code04','code09','code12','code15','code19','code20','code24','code25','code33']].sum(axis=1)
+            print(self.dfs_compare[['TIMESTAMP','footprint_aceptance']])
+            print('OK')
         except:
             print('erro footprint')
 
@@ -286,6 +307,14 @@ class view_files:
         if self.checkbox_rain.active == [0]:
             flag = flag[flag['precip_Tot']==0]
             self.dfs_compare_copy.loc[(self.dfs_compare_copy['precip_Tot']!=0), 'ET'] = np.nan
+
+        if self.checkbox_footprint.active == [0]:
+            print(self.slider_footprint.value)
+            # print(flag['footprint_aceptance'])
+            # flag = flag[]
+            # print(self.dfs_compare_copy[['footprint_aceptance', 'code03','code04']].describe())
+            flag = flag[flag['footprint_aceptance']>=self.slider_footprint.value]
+
 
         flag = flag[flag[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)==2]
 
