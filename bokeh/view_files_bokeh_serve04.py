@@ -71,10 +71,14 @@ class view_files:
 
         self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
 
+        self.html_footprint = Div(text=r'''C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_90.csv C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_80.csv''', width=100,style={'font-size': '75%'})
+
         self.path_footprint = TextInput(value='', title='Insert Footprint Path')
         self.path_footprint.on_change('value', self._textInput_footprint)
+
         self.checkbox_footprint = CheckboxGroup(labels=['Footprint'])
         self.checkbox_footprint.on_click(self._button_plot_click)
+
         self.slider_footprint = Slider(start=0, end=1, value=0, step=0.01, title='Footprint Acceptance')
 
 
@@ -100,6 +104,7 @@ class view_files:
                       self.checkbox_rain,
                       self.daterangeslider,
                       self.timerangeslider,
+                      self.html_footprint,
                       self.path_footprint,
                       gridplot([[self.checkbox_footprint], [self.slider_footprint]],toolbar_options=dict(logo=None)),
                       self.text_save_df,
@@ -178,14 +183,20 @@ class view_files:
     def tab_02(self):
         self.select_lf_column = Select(title='LF Radiation Column', value=None, options=[])
         self.select_lf_column.on_change('value', self._select_lf_column)
-        self.source_03 = ColumnDataSource(data=dict(x=[], y=[], rad=[]))
+        self.source_03 = ColumnDataSource(data=dict(x=[], y=[]))
 
-        self.fig_05 = figure(title='LF radiation', plot_height=350, plot_width=1200, x_axis_type='datetime')
-        radiation_circle = self.fig_05.circle(x='x',y='y', source=self.source_03)
+        self.fig_05 = figure(title='Q-Q plot Footprint', plot_height=500, plot_width=500)
+        qqplot = self.fig_05.line(x='x', y='y', source=self.source_03)
+        # radiation_circle = self.fig_05.circle(x='x',y='y', source=self.source_03)
 
-        erad = self.fig_05.circle(x='x', y='rad', source=self.source_03, color='red')
+        # erad = self.fig_05.circle(x='x', y='rad', source=self.source_03, color='red')
 
-        tab02 = Panel(child=column(self.select_lf_column,self.fig_05), title='Radiation')
+
+        slope_5 = Slope(gradient=1, y_intercept=0, line_color='orange', line_dash='dashed', line_width=3)
+        self.fig_05.add_layout(slope_5)
+
+
+        tab02 = Panel(child=column(self.fig_05), title='Mais')
 
         return tab02
 
@@ -304,6 +315,12 @@ class view_files:
             self.dfs_compare_copy.loc[
                 (self.dfs_compare_copy['H2O_sig_strgth_mean'] <= self.slider_signalStrFilter.value), 'ET'] = np.nan
 
+
+
+        flag = flag[flag[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)==2]
+
+        self.dfs_compare_copy.loc[self.dfs_compare_copy[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)!=2,'ET'] = np.nan
+
         if self.checkbox_rain.active == [0]:
             flag = flag[flag['precip_Tot']==0]
             self.dfs_compare_copy.loc[(self.dfs_compare_copy['precip_Tot']!=0), 'ET'] = np.nan
@@ -313,12 +330,17 @@ class view_files:
             # print(flag['footprint_aceptance'])
             # flag = flag[]
             # print(self.dfs_compare_copy[['footprint_aceptance', 'code03','code04']].describe())
+            self.flag_footprint_r = flag[flag['footprint_aceptance']<self.slider_footprint.value].copy()
+            # print(self.flag_footprint_r)
             flag = flag[flag['footprint_aceptance']>=self.slider_footprint.value]
 
 
-        flag = flag[flag[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)==2]
+            self.qqplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
+            # self.source_03.data = dict(x=self.flag_footprint_r['ET'],
+            #                            y=flag['ET'])
 
-        self.dfs_compare_copy.loc[self.dfs_compare_copy[['qc_H','qc_LE']].isin(self.checkbox_flag.active).sum(axis=1)!=2,'ET'] = np.nan
+
+
 
         # print(self.dfs_compare_copy.loc[self.dfs_compare_copy['qc_H']==2, 'ET'])
 
@@ -412,5 +434,27 @@ class view_files:
         path = pathlib.Path('{}'.format(self.text_save_df.value))
         self.df_filter.to_csv(path/'df_filter.csv')
         self.dfs_compare_copy.to_csv(path/'dfs_compare.csv')
+
+
+    def qqplot(self, x, y):
+        try:
+            x_sorted = x.sort_values().values
+            y_sorted = y.sort_values().values
+
+            quantile_lvls_x = np.arange(len(x_sorted), dtype=float)/len(x_sorted)
+            quantile_lvls_y = np.arange(len(y_sorted), dtype=float)/len(y_sorted)
+
+            print(quantile_lvls_x, quantile_lvls_y)
+            if len(x_sorted) <= len(y_sorted):
+                quantiles_y = y_sorted
+                quantiles_x = np.interp(y_sorted, quantile_lvls_x, x_sorted)
+            if len(x_sorted) > len(y_sorted):
+                quantiles_x = x_sorted
+                quantiles_y = np.interp(x_sorted, quantile_lvls_y, y_sorted)
+
+            self.source_03.data = dict(x=quantiles_x,
+                                       y=quantiles_y)
+        except:
+            pass
 
 view_files()
