@@ -251,7 +251,7 @@ class view_k15:
         return tab03
 
     def tab_04(self):
-        self.div_04_01 = Div(text='In order to use this function it is necessary a file containing the number of vegetation pixels. The number of vegetation pixels are created based on Kljun et al. (2015) based on 90% of contribution', width=1200)
+        self.div_04_01 = Div(text='Para o funcionamento dessa aba é necessário o processamento dos dados e criação de uma arquivo CSV (esquerda) ou indicação de um arquivo já processado (direita). Para isso, utiliza-se a metodologia por Kljun et al. (2015) com uma área de contribuição de até 90%. (Recomenda-se entre 80% ~ 90%)', width=1200)
 
         self.datetime_range = DateRangeSlider(title='Date', start=dt.datetime(2018,1,1),
                                               end=dt.datetime(2019,1,1),
@@ -262,7 +262,7 @@ class view_k15:
         self.button_download = Button(label='Download', width=150, button_type='danger')
         self.button_download.on_click(self._button_download)
 
-        self.div_04_02 = Div(text=r'C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2019-07-03-00-00.csv')
+        self.div_04_02 = Div(text=r'''C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_90.csv C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_dr_90.csv C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_80.csv''')
 
         self.path_footprintStats_k15 = TextInput(value='')
         self.button_update_footprintstats = Button(label='Update', button_type='success')
@@ -794,6 +794,7 @@ class view_k15:
             df_to_save['code33'] = code33
             #
             folder_to_save = pathlib.Path('{}'.format(self.path_download.value))
+
             file_name = 'classification_pixel_{}to{}.csv'.format(datetime_start.strftime('%Y-%m-%d-%H-%M'),datetime_end.strftime('%Y-%m-%d-%H-%M'))
             # print(file_name)
             df_to_save.to_csv(folder_to_save/file_name)
