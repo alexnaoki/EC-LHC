@@ -186,17 +186,21 @@ class view_files:
         self.source_03 = ColumnDataSource(data=dict(x=[], y=[]))
 
         self.fig_05 = figure(title='Q-Q plot Footprint', plot_height=500, plot_width=500)
-        qqplot = self.fig_05.line(x='x', y='y', source=self.source_03)
-        # radiation_circle = self.fig_05.circle(x='x',y='y', source=self.source_03)
-
-        # erad = self.fig_05.circle(x='x', y='rad', source=self.source_03, color='red')
-
+        qqplot = self.fig_05.circle(x='x', y='y', source=self.source_03)
 
         slope_5 = Slope(gradient=1, y_intercept=0, line_color='orange', line_dash='dashed', line_width=3)
         self.fig_05.add_layout(slope_5)
 
+        self.source_04 = ColumnDataSource(data=dict(hist01=[], l_edge01=[], r_edge01=[], hist02=[], l_edge02=[], r_edge02=[]))
+        self.fig_06 = figure(title='Hist plot Footprint', plot_height=500, plot_width=500)
+        hist01 = self.fig_06.quad(bottom=0,top='hist01', left='l_edge01', right='r_edge01',
+                                fill_color='navy', line_color='white', alpha=0.5,source=self.source_04)
+        hist02 = self.fig_06.quad(bottom=0, top='hist02', left='l_edge02', right='r_edge02',
+                                  fill_color='red', line_color='white', alpha=0.5, source=self.source_04)
 
-        tab02 = Panel(child=column(self.fig_05), title='Mais')
+
+
+        tab02 = Panel(child=column(row(self.fig_05, self.fig_06)), title='Mais')
 
         return tab02
 
@@ -242,6 +246,7 @@ class view_files:
             print(self.footprint_df)
             # print(self.dfs_compare_copy['TIMESTAMP'].min(),self.dfs_compare_copy['TIMESTAMP'].max())
             self.dfs_compare = pd.merge(left=self.dfs_compare, right=self.footprint_df, on='TIMESTAMP', how='outer')
+            # print(self.dfs_compare[['TIMESTAMP','code03','code04','ET']][560:570])
             self.dfs_compare['footprint_aceptance'] = self.dfs_compare[['code03','code04']].sum(axis=1)/self.dfs_compare[['code03','code04','code09','code12','code15','code19','code20','code24','code25','code33']].sum(axis=1)
             print(self.dfs_compare[['TIMESTAMP','footprint_aceptance']])
             print('OK')
@@ -339,6 +344,9 @@ class view_files:
             # self.source_03.data = dict(x=self.flag_footprint_r['ET'],
             #                            y=flag['ET'])
 
+            self.histplot(x=self.flag_footprint_r['ET'].values, y=flag['ET'].values)
+
+            print("MEAN",self.flag_footprint_r['ET'].mean(), flag['ET'].mean())
 
 
 
@@ -445,15 +453,41 @@ class view_files:
             quantile_lvls_y = np.arange(len(y_sorted), dtype=float)/len(y_sorted)
 
             print(quantile_lvls_x, quantile_lvls_y)
-            if len(x_sorted) <= len(y_sorted):
+            if len(x_sorted) >= len(y_sorted):
+
+
                 quantiles_y = y_sorted
-                quantiles_x = np.interp(y_sorted, quantile_lvls_x, x_sorted)
-            if len(x_sorted) > len(y_sorted):
+                quantiles_x = np.interp(quantile_lvls_y, quantile_lvls_x, x_sorted)
+            if len(x_sorted) < len(y_sorted):
                 quantiles_x = x_sorted
-                quantiles_y = np.interp(x_sorted, quantile_lvls_y, y_sorted)
+                quantiles_y = np.interp(quantile_lvls_x, quantile_lvls_y, y_sorted)
+            #
+            # print("MIN",np.min(x_sorted), np.min(y_sorted))
+            # print("MAX",np.max(x_sorted), np.max(y_sorted))
+            #
+            # print("MIN",np.min(quantiles_x), np.min(quantiles_y))
+            # print("MAX",np.max(quantiles_x), np.max(quantiles_y))
+
+
 
             self.source_03.data = dict(x=quantiles_x,
                                        y=quantiles_y)
+        except:
+            pass
+
+    def histplot(self, x, y):
+        try:
+            hist01, edges01 = np.histogram(x, density=True, bins=50)
+            hist02, edges02 = np.histogram(y, density=True, bins=50)
+            print('HIST',hist01)
+
+            self.source_04.data = dict(hist01=hist01,
+                                       l_edge01=edges01[:-1],
+                                       r_edge01=edges01[1:],
+                                       hist02=hist02,
+                                       l_edge02=edges02[:-1],
+                                       r_edge02=edges02[1:])
+
         except:
             pass
 
