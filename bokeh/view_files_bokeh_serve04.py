@@ -1,5 +1,5 @@
 from bokeh.io import show, output_file, curdoc
-from bokeh.models import Button, TextInput, Paragraph, Select, Panel, Tabs,ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem, LinearColorMapper, Div,CheckboxButtonGroup,Slider,CheckboxGroup,RangeSlider,BasicTicker, ColorBar,DatetimeTickFormatter
+from bokeh.models import Button, TextInput, Paragraph, Select, Panel, Tabs,ColumnDataSource, RangeTool, Circle, Slope, Label, Legend, LegendItem, LinearColorMapper, Div,CheckboxButtonGroup,Slider,CheckboxGroup,RangeSlider,BasicTicker, ColorBar,DatetimeTickFormatter, Span
 from bokeh.layouts import gridplot, column, row
 from bokeh.plotting import figure
 from bokeh.transform import transform
@@ -185,19 +185,27 @@ class view_files:
         self.select_lf_column.on_change('value', self._select_lf_column)
         self.source_03 = ColumnDataSource(data=dict(x=[], y=[]))
 
-        self.fig_05 = figure(title='Q-Q plot Footprint', plot_height=500, plot_width=500)
+        self.fig_05 = figure(title='Q-Q plot Footprint', plot_height=500, plot_width=500, x_range=(-0.1,1), y_range=(-0.1,1))
         qqplot = self.fig_05.circle(x='x', y='y', source=self.source_03)
 
         slope_5 = Slope(gradient=1, y_intercept=0, line_color='orange', line_dash='dashed', line_width=3)
         self.fig_05.add_layout(slope_5)
 
         self.source_04 = ColumnDataSource(data=dict(hist01=[], l_edge01=[], r_edge01=[], hist02=[], l_edge02=[], r_edge02=[]))
+        self.source_05 = ColumnDataSource(data=dict(x=[],y=[],text=[]))
         self.fig_06 = figure(title='Hist plot Footprint', plot_height=500, plot_width=500)
         hist01 = self.fig_06.quad(bottom=0,top='hist01', left='l_edge01', right='r_edge01',
-                                fill_color='navy', line_color='white', alpha=0.5,source=self.source_04)
+                                fill_color='blue', line_color='white', alpha=0.5,source=self.source_04)
         hist02 = self.fig_06.quad(bottom=0, top='hist02', left='l_edge02', right='r_edge02',
                                   fill_color='red', line_color='white', alpha=0.5, source=self.source_04)
 
+        self.span_x = Span(location=0, dimension='height', line_color='blue', line_dash='dashed', line_width=3)
+        self.fig_06.add_layout(self.span_x)
+
+        self.span_y = Span(location=0, dimension='height', line_color='red', line_dash='dashed', line_width=3)
+        self.fig_06.add_layout(self.span_y)
+
+        self.text02 = self.fig_06.text(x='x', y='y', text='text', source=self.source_05, text_baseline='top', text_align='right')
 
 
         tab02 = Panel(child=column(row(self.fig_05, self.fig_06)), title='Mais')
@@ -339,12 +347,10 @@ class view_files:
             # print(self.flag_footprint_r)
             flag = flag[flag['footprint_aceptance']>=self.slider_footprint.value]
 
-
-            self.qqplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
-            # self.source_03.data = dict(x=self.flag_footprint_r['ET'],
-            #                            y=flag['ET'])
-
-            self.histplot(x=self.flag_footprint_r['ET'].values, y=flag['ET'].values)
+            self.footprint_stats(x=self.flag_footprint_r['ET'], y=flag['ET'])
+            #
+            # self.qqplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
+            # self.histplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
 
             print("MEAN",self.flag_footprint_r['ET'].mean(), flag['ET'].mean())
 
@@ -399,6 +405,14 @@ class view_files:
 
     def _button_plot_click(self, new):
         self.update_01()
+
+    def footprint_stats(self, x, y):
+        self.qqplot(x=x, y=y)
+        self.histplot(x=x, y=y)
+
+
+        # self.source_05.data = dict(x=)
+
 
     def _selection_energybalance(self, attr, old, new):
         try:
@@ -477,9 +491,14 @@ class view_files:
 
     def histplot(self, x, y):
         try:
-            hist01, edges01 = np.histogram(x, density=True, bins=50)
-            hist02, edges02 = np.histogram(y, density=True, bins=50)
+            hist01, edges01 = np.histogram(x.values, density=True, bins=50)
+            hist02, edges02 = np.histogram(y.values, density=True, bins=50)
             print('HIST',hist01)
+
+            mean_x = x.mean()
+            mean_y = y.mean()
+            self.span_x.location = mean_x
+            self.span_y.location = mean_y
 
             self.source_04.data = dict(hist01=hist01,
                                        l_edge01=edges01[:-1],
@@ -487,6 +506,11 @@ class view_files:
                                        hist02=hist02,
                                        l_edge02=edges02[:-1],
                                        r_edge02=edges02[1:])
+
+            self.source_05.data = dict(x=[np.maximum(edges01, edges02).max()],
+                                       y=[np.maximum(hist01, hist02).max()],
+                                       text=['Mean (Pasto): {:.4f}\nMean (Cerrado): {:.4f}'.format(mean_x, mean_y)])
+
 
         except:
             pass
