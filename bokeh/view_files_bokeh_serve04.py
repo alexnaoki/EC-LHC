@@ -353,6 +353,9 @@ class view_files:
             # self.histplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
 
             print("MEAN",self.flag_footprint_r['ET'].mean(), flag['ET'].mean())
+            # print('date', start_date)
+            self.fig_05.title.text = 'Q-Qplot Footprint - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
+            self.fig_06.title.text = 'Hist plot Footprint - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
 
 
 
@@ -468,8 +471,6 @@ class view_files:
 
             print(quantile_lvls_x, quantile_lvls_y)
             if len(x_sorted) >= len(y_sorted):
-
-
                 quantiles_y = y_sorted
                 quantiles_x = np.interp(quantile_lvls_y, quantile_lvls_x, x_sorted)
             if len(x_sorted) < len(y_sorted):
@@ -497,6 +498,7 @@ class view_files:
 
             mean_x = x.mean()
             mean_y = y.mean()
+            diff_porcent = (mean_y - mean_x)*100/mean_y
             self.span_x.location = mean_x
             self.span_y.location = mean_y
 
@@ -509,7 +511,7 @@ class view_files:
 
             self.source_05.data = dict(x=[np.maximum(edges01, edges02).max()],
                                        y=[np.maximum(hist01, hist02).max()],
-                                       text=['Mean (Pasto): {:.4f}\nMean (Cerrado): {:.4f}'.format(mean_x, mean_y)])
+                                       text=['Mean (Pasto): {:.4f}\nMean (Cerrado): {:.4f}\nDiff Cerrado (%): {:.4f}'.format(mean_x, mean_y, diff_porcent)])
 
 
         except:
