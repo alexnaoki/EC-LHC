@@ -207,6 +207,15 @@ class view_files:
 
         self.text02 = self.fig_06.text(x='x', y='y', text='text', source=self.source_05, text_baseline='top', text_align='right')
 
+        self.fig_05.toolbar.autohide = True
+        self.fig_06.toolbar.autohide = True
+
+        self.fig_05.xaxis.axis_label = 'Quantil (Pasto)'
+        self.fig_05.yaxis.axis_label = 'Quantil (Cerrado sensu stricto)'
+
+        self.fig_06.xaxis.axis_label = 'ET (mm/h)'
+        self.fig_06.yaxis.axis_label = 'Histograma'
+
 
         tab02 = Panel(child=column(row(self.fig_05, self.fig_06)), title='Mais')
 
@@ -340,27 +349,15 @@ class view_files:
 
         if self.checkbox_footprint.active == [0]:
             print(self.slider_footprint.value)
-            # print(flag['footprint_aceptance'])
-            # flag = flag[]
-            # print(self.dfs_compare_copy[['footprint_aceptance', 'code03','code04']].describe())
+
             self.flag_footprint_r = flag[flag['footprint_aceptance']<self.slider_footprint.value].copy()
-            # print(self.flag_footprint_r)
+
             flag = flag[flag['footprint_aceptance']>=self.slider_footprint.value]
 
             self.footprint_stats(x=self.flag_footprint_r['ET'], y=flag['ET'])
-            #
-            # self.qqplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
-            # self.histplot(x=self.flag_footprint_r['ET'], y=flag['ET'])
 
-            print("MEAN",self.flag_footprint_r['ET'].mean(), flag['ET'].mean())
-            # print('date', start_date)
-            self.fig_05.title.text = 'Q-Qplot Footprint - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
-            self.fig_06.title.text = 'Hist plot Footprint - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
-
-
-
-        # print(self.dfs_compare_copy.loc[self.dfs_compare_copy['qc_H']==2, 'ET'])
-
+            self.fig_05.title.text = 'Q-Q plot - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
+            self.fig_06.title.text = 'Histogramas - Start: {} End: {} | {} ~ {}'.format(start_date, end_date, start_time, end_time)
 
         return flag
 
@@ -412,9 +409,6 @@ class view_files:
     def footprint_stats(self, x, y):
         self.qqplot(x=x, y=y)
         self.histplot(x=x, y=y)
-
-
-        # self.source_05.data = dict(x=)
 
 
     def _selection_energybalance(self, attr, old, new):
@@ -476,14 +470,6 @@ class view_files:
             if len(x_sorted) < len(y_sorted):
                 quantiles_x = x_sorted
                 quantiles_y = np.interp(quantile_lvls_x, quantile_lvls_y, y_sorted)
-            #
-            # print("MIN",np.min(x_sorted), np.min(y_sorted))
-            # print("MAX",np.max(x_sorted), np.max(y_sorted))
-            #
-            # print("MIN",np.min(quantiles_x), np.min(quantiles_y))
-            # print("MAX",np.max(quantiles_x), np.max(quantiles_y))
-
-
 
             self.source_03.data = dict(x=quantiles_x,
                                        y=quantiles_y)
@@ -494,7 +480,7 @@ class view_files:
         try:
             hist01, edges01 = np.histogram(x.values, density=True, bins=50)
             hist02, edges02 = np.histogram(y.values, density=True, bins=50)
-            print('HIST',hist01)
+            # print('HIST',hist01)
 
             mean_x = x.mean()
             mean_y = y.mean()
@@ -511,9 +497,7 @@ class view_files:
 
             self.source_05.data = dict(x=[np.maximum(edges01, edges02).max()],
                                        y=[np.maximum(hist01, hist02).max()],
-                                       text=['Mean (Pasto): {:.4f}\nMean (Cerrado): {:.4f}\nDiff Cerrado (%): {:.4f}'.format(mean_x, mean_y, diff_porcent)])
-
-
+                                       text=['Média (Pasto): {:.4f}\nMédia (Cerrado): {:.4f}\nDif (%): {:.4f}'.format(mean_x, mean_y, diff_porcent)])
         except:
             pass
 
