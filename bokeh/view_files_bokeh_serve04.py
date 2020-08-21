@@ -216,8 +216,21 @@ class view_files:
         self.fig_06.xaxis.axis_label = 'ET (mm/h)'
         self.fig_06.yaxis.axis_label = 'Histograma'
 
+        self.div_numberData = Div(text='''<table>
+<tbody>
+<tr>
+<td>&nbsp;Cerrado</td>
+<td>Pasto&nbsp;</td>
+</tr>
+<tr>
+<td>&nbsp;{}</td>
+<td>{}&nbsp;</td>
+</tr>
+</tbody>
+</table>'''.format(0,0))
 
-        tab02 = Panel(child=column(row(self.fig_05, self.fig_06)), title='Mais')
+
+        tab02 = Panel(child=column(row(self.fig_05, self.fig_06), self.div_numberData), title='Mais')
 
         return tab02
 
@@ -498,6 +511,19 @@ class view_files:
             self.source_05.data = dict(x=[np.maximum(edges01, edges02).max()],
                                        y=[np.maximum(hist01, hist02).max()],
                                        text=['Média (Pasto): {:.4f}\nMédia (Cerrado): {:.4f}\nDif (%): {:.4f}'.format(mean_x, mean_y, diff_porcent)])
+
+            self.div_numberData.text = '''<table>
+    <tbody>
+    <tr>
+    <td>&nbsp;Cerrado</td>
+    <td>Pasto&nbsp;</td>
+    </tr>
+    <tr>
+    <td>&nbsp;{}</td>
+    <td>{}&nbsp;</td>
+    </tr>
+    </tbody>
+    </table>'''.format(len(y),len(x))
         except:
             pass
 
