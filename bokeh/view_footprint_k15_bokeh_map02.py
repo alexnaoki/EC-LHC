@@ -41,7 +41,7 @@ class view_k15:
         self.iab3_y_utm_sirgas = 7545463.6805863
 
         # Inicialização dos 3 tabs
-        self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03(), self.tab_04()])
+        self.tabs = Tabs(tabs=[self.tab_01(), self.tab_02(), self.tab_03(), self.tab_04(), self.tab_05()])
 
         # Gerar servidor para rodar o programa
         curdoc().add_root(self.tabs)
@@ -173,7 +173,7 @@ class view_k15:
 
         # Figura 03 - Mapa e Footprint acumulado
         self.source_02 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
-        self.fig_02 = figure(title='Footprint K15 acumulado', plot_height=400, plot_width=500, x_range=x_range, y_range=y_range)
+        self.fig_02 = figure(title='Footprint K15 acumulado', plot_height=400, plot_width=400, x_range=x_range, y_range=y_range)
         self.fig_02.add_tile(tile_provider)
         self.fig_02.title.align = 'center'
         self.fig_02.title.text_font_size = '20px'
@@ -353,6 +353,39 @@ class view_k15:
 
         return tab04
 
+    def tab_05(self):
+        self.div_05 = Div(text='Footprint per acceptance', width=500)
+
+        self.slider_footprint_acceptance = Slider(start=0, end=1, value=0, step=0.01, title='Footprint Acceptance')
+
+        self.button_update_ffp_acceptance = Button(label='Update Plot', width=500)
+        self.button_update_ffp_acceptance.on_click(self._button_update_ffp)
+
+        # Range do x, y relativo ao web Mercator
+        x_range = (-5332000, -5327000)
+        y_range = (-2535000, -2530000)
+
+        # Tile para display do mapa na figura
+        tile_provider = get_provider(ESRI_IMAGERY)
+
+        self.source_05 = ColumnDataSource(data=dict(xrs=[], yrs=[]))
+        self.fig_07 = figure(title='Footprint K15 acceptance', plot_height=400, plot_width=400, x_range=x_range, y_range=y_range)
+        self.fig_07.add_tile(tile_provider)
+
+        iab03 = self.fig_07.circle([self.iab3_x_utm_webMarcator], [self.iab3_y_utm_webMarcator], color='red')
+        mlines = self.fig_07.multi_line(xs='xrs', ys='yrs', source=self.source_05, color='red', line_width=1)
+
+        legend = Legend(items=[
+            LegendItem(label='Torre IAB3', renderers=[iab03], index=0),
+            LegendItem(label='Footprint Kljun et al. (10% ~ 90%)', renderers=[mlines], index=1)
+        ])
+        self.fig_07.add_layout(legend)
+
+        tab05 = Panel(child=column(self.div_05,
+                                   self.slider_footprint_acceptance,
+                                   self.button_update_ffp_acceptance,
+                                   self.fig_07), title='Footprint per acceptance')
+        return tab05
 
     def _textInput(self, attr, old, new):
         '''
@@ -420,7 +453,7 @@ class view_k15:
                                              sigmav=inputs_to_k15['v_var'].values[0],
                                              ustar=inputs_to_k15['u*'].values[0],
                                              wind_dir=inputs_to_k15['wind_dir_compass'].values[0],
-                                             rs=[0.3, 0.9], crop=False, fig=False)
+                                             rs=[0.9], crop=False, fig=False)
 
             # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
             poly = [(i+self.iab3_x_utm_sirgas, j+self.iab3_y_utm_sirgas) for i, j in zip(out[8][-1], out[9][-1])]
@@ -453,11 +486,13 @@ class view_k15:
 
 
             # Transformação das coordenadas de footprint de Kljun et al. (2015) [0,0] para Web Marcator
-            x_webMarcator = list(np.array(out[8][-1]) + self.iab3_x_utm_webMarcator)
-            y_webMarcator = list(np.array(out[9][-1]) + self.iab3_y_utm_webMarcator)
-
+            x_webMarcator = []
+            y_webMarcator = []
+            for i,j in zip(out[8], out[9]):
+                x_webMarcator.append(list(np.array(i)+self.iab3_x_utm_webMarcator))
+                y_webMarcator.append(list(np.array(j)+self.iab3_y_utm_webMarcator))
             # Atualização do source
-            self.source_01.data = dict(xrs=[x_webMarcator], yrs=[y_webMarcator])
+            self.source_01.data = dict(xrs=x_webMarcator, yrs=y_webMarcator)
 
         if self.tabs.active == 2:
             # Transformação de float do widget para datetime
@@ -521,11 +556,48 @@ class view_k15:
                              100*simplified_stats[0]/(simplified_stats[0]+simplified_stats[1]))
 
             # Transformação das coordenadas de footprint de Kljun et al. (2015) [0,0] para Web Marcator
-            x_webMarcator = list(np.array(out['xr'][-1]) + self.iab3_x_utm_webMarcator)
-            y_webMarcator = list(np.array(out['yr'][-1]) + self.iab3_y_utm_webMarcator)
+            # x_webMarcator = list(np.array(out['xr'][-1]) + self.iab3_x_utm_webMarcator)
+            # y_webMarcator = list(np.array(out['yr'][-1]) + self.iab3_y_utm_webMarcator)
+            x_webMarcator = []
+            y_webMarcator = []
+            for i,j in zip(out['xr'], out['yr']):
+                x_webMarcator.append(list(np.array(i)+self.iab3_x_utm_webMarcator))
+                y_webMarcator.append(list(np.array(j)+self.iab3_y_utm_webMarcator))
 
             # Atualização do source
-            self.source_02.data = dict(xrs=[x_webMarcator], yrs=[y_webMarcator])
+            self.source_02.data = dict(xrs=x_webMarcator, yrs=y_webMarcator)
+
+        if self.tabs.active == 4:
+            print(self.slider_footprint_acceptance.value)
+            df_footprint_acceptance = self.df_footprintstats.copy()
+            df_footprint_acceptance_filter = df_footprint_acceptance.loc[df_footprint_acceptance['classification_percentage']>=self.slider_footprint_acceptance.value]
+
+            # df_ep_footprint_acceptance = pd.merge(left=self.df_ep, right=df_footprint_acceptance_filter, on='TIMESTAMP', how='inner')
+
+            # print(df_ep_footprint_acceptance.columns)
+
+            out = self.k15_climatology.output(zm=9,
+                                              umean=df_footprint_acceptance_filter['u_rot'].to_list(),
+                                              h=[1000 for i in range(len(df_footprint_acceptance_filter['u_rot'].to_list()))],
+                                              ol=df_footprint_acceptance_filter['L'].to_list(),
+                                              sigmav=df_footprint_acceptance_filter['v_var'].to_list(),
+                                              ustar=df_footprint_acceptance_filter['u*'].to_list(),
+                                              wind_dir=df_footprint_acceptance_filter['wind_dir_compass'].to_list(),
+                                              rs=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9], crop=False,fig=False)
+            print(np.shape(out['xr']), np.shape(out['yr']))
+            print('XR', out['xr'])
+            print('YR', out['yr'])
+
+            # Transformação das coordenadas de footprint de Kljun et al. (2015) [0,0] para Web Marcator
+            # x_webMarcator = list(np.array(out['xr'][-1]) + self.iab3_x_utm_webMarcator)
+            # y_webMarcator = list(np.array(out['yr'][-1]) + self.iab3_y_utm_webMarcator)
+            x_webMarcator = []
+            y_webMarcator = []
+            for i,j in zip(out['xr'], out['yr']):
+                x_webMarcator.append(list(np.array(i)+self.iab3_x_utm_webMarcator))
+                y_webMarcator.append(list(np.array(j)+self.iab3_y_utm_webMarcator))
+
+            self.source_05.data = dict(xrs=x_webMarcator, yrs=y_webMarcator)
 
     def update_windDir(self):
         # Transformação do float para datetime
