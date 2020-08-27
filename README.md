@@ -28,7 +28,7 @@ Descrição da análise do preenchimento de falhas
 ### Processamento dados brutos
 Este tópico tem o objetivo de mostrar as etapas necessárias para obtenção de uma série de dados brutos para o processamento.
 
-O passo a passo se encontra [aqui]()
+O passo a passo se encontra [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/info/etapas_processamento_dados_brutos.md).
 
 ### Bokeh
 Para utilização dos arquivos com biblioteca Bokeh é necessário seguir algumas etapas descritas [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/info/descricao_arquivos_bokeh.md).
