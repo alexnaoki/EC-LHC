@@ -25,8 +25,15 @@ Descrição da análise do preenchimento de falhas
 
 ## Descrição dos códigos
 
+### Processamento dados brutos
+Este tópico tem o objetivo de mostrar as etapas necessárias para obtenção de uma série de dados brutos para o processamento.
+
+O passo a passo se encontra [aqui]()
+
 ### Bokeh
 Para utilização dos arquivos com biblioteca Bokeh é necessário seguir algumas etapas descritas [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/info/descricao_arquivos_bokeh.md).
+
+Os programas desenvolvidos utilizando Bokeh têm como função principal a interatividade e análise dos dados.
 
 ### bqplot
 A pasta com bqplot não é mais atualizada
