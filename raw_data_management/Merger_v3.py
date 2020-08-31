@@ -57,11 +57,17 @@ class Merger_TOA5():
                     self.files_to_merge[i].unlink()
                     print(f'Deleting {self.files_to_merge[i]}')
 
+    # def 
 
 
 
-
-
+# Main folder
 path_teste = r'G:\Meu Drive\USP-SHS\Exemplo_apagar_dps'
+
+# Start program
 a = Merger_TOA5(path=path_teste)
+
+# Identify and Merge data from same day
 a.identify_sameday()
+
+#s
