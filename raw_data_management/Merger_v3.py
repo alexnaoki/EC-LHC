@@ -22,11 +22,14 @@ class Merger_TOA5():
         self.file_number = []
         for file in files:
             if file.stat().st_size < min_fileSize:
+                if pathlib.Path(self.merge_folder/file.name).is_file():
+                    print('file exist')
+                else:
                 # print(files[i])
                 # print(file.name[19:-20])
-                print(file.stat().st_size)
-                self.incomplete_files.append(file)
-                self.file_number.append(int(file.name[19:-20]))
+                    print(file.stat().st_size)
+                    self.incomplete_files.append(file)
+                    self.file_number.append(int(file.name[19:-20]))
 
         # Copying files to merge
         self.files_to_merge = []
@@ -65,22 +68,29 @@ class Merger_TOA5():
 
         # Create merge folder
         # print(self.path.parents[0])
-        complete_folder = self.path.parents[0]/'tob1_complete'
-        complete_folder.mkdir(exist_ok=True)
+        self.complete_folder = self.path.parents[0]/'tob1_complete'
+        self.complete_folder.mkdir(exist_ok=True)
 
         self.complete_files = []
         for file in files:
             if file.stat().st_size >= min_fileSize:
                 print(file)
-                self.complete_files.append(file)
-                shutil.copyfile(src=file, dst=complete_folder/file.name)
+                if pathlib.Path(self.complete_folder/file.name).is_file():
+                    print('file exist')
+
+                else:
+                    self.complete_files.append(file)
+                    shutil.copyfile(src=file, dst=self.complete_folder/file.name)
         # copyAll = input('Copy all files ? ')
         # print(type(copyAll))
 
     def convert_toa_to_tob1(self, path_toa_to_tob1):
         # path_toa_to_tob1 path_toa_to_tob1th
-        toa5_files_to_convert = self.merge_folder.glob('TOA5*.dat')
+        toa5_files_to_convert = self.merge_folder.rglob('TOA5*.dat')
         for toa5_file in toa5_files_to_convert:
+            # if toa5_file.is_file():
+            #     print('file exists')
+            # else:
             print('Converting: ',toa5_file)
 
             tob1_path = toa5_file.parents[0]
@@ -90,13 +100,28 @@ class Merger_TOA5():
             # print(tob1_file)
 
             tob1_pathfile = tob1_path/tob1_file
+            if pathlib.Path(tob1_pathfile).is_file():
+                print('ja existe')
+            else:
 
-            os.system(f'"{path_toa_to_tob1}" {toa5_file} {tob1_pathfile}')
+                os.system(f'"{path_toa_to_tob1}" {toa5_file} {tob1_pathfile}')
+
+    def join_mergedFiles_fullFiles(self):
+        tob1_files_merged = self.merge_folder.rglob('TOB1*.dat')
+        for file in tob1_files_merged:
+            if pathlib.Path(self.complete_folder/file.name).is_file():
+                print('ja existe')
+            else:
+            # if file.is_file():
+            #     print('file exist')
+            # else:
+                print('Copied:', file)
+                shutil.copyfile(src=file, dst=self.complete_folder/file.name)
 
 
 # Main folder
-path_teste = r'G:\Meu Drive\USP-SHS\Exemplo_apagar_dps'
-
+# path_teste = r'G:\Meu Drive\USP-SHS\Exemplo_apagar_dps'
+path_teste = r'E:\Teste_merger_func'
 # Start program
 a = Merger_TOA5(path=path_teste)
 
@@ -104,6 +129,10 @@ a = Merger_TOA5(path=path_teste)
 a.identifyandmerge_sameday()
 
 # Copy Tob1 files to newfolder
-# a.copy_tob_files()
+a.copy_tob_files()
 
-a.convert_toa_to_tob1(path_toa_to_tob1='.')
+# Convert TOA5 files to tob1 using merge folder
+a.convert_toa_to_tob1(path_toa_to_tob1=r"C:\Program Files (x86)\Campbellsci\LoggerNet\toa_to_tob1")
+
+# Copy converted TOB1 files to tob1_complete folder
+a.join_mergedFiles_fullFiles()
