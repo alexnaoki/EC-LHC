@@ -16,7 +16,6 @@ As etapas a serem utilizadas requerem a instalação de alguns programas fora do
 ## Tutorial de utilização
 O seguinte programa identifica arquivos tipo '.dat' onde possui em seu nome 'TOA5_11341.ts_data' a qual é a nomenclatura para dados tipo 'TOA5' e alta frequência (20 Hz). O programa é capaz de ler "família de pastas", ou seja, deve-se fornecer a "pasta mãe" dos arquivos que se deseja ajeitar. Logo, o programa é capaz de unir 2 arquivos 'TOA5' de um mesmo dia.
 
-Porém, para o processamento de dados no *EddyPro* e *EasyFlux* é necessário a utilização de arquivos do tipo 'TOB1', sendo assim, necessário a conversão dos arquivos unidos.
+Porém, para o processamento de dados no *EddyPro* e *EasyFlux* é necessário a utilização de arquivos do tipo **'TOB1'**, sendo assim, necessário a conversão dos arquivos unidos.
 
-```python
-```
+Para realizar a união de arquivos TOA5 e seguinte conversão para TOB1 é necessário a utilização do programa [Merger_v3.py](git\EC-LHC\raw_data_management\Merger_v3.py)
