@@ -118,6 +118,19 @@ class Merger_TOA5():
                 print('Copied:', file)
                 shutil.copyfile(src=file, dst=self.complete_folder/file.name)
 
+    def copying_renaming_tobFiles(self):
+        tob1_files = self.complete_folder.rglob('TOB1*.dat')
+        date_tob_folder = self.complete_folder.parents[0]/'tob1_date'
+        date_tob_folder.mkdir(exist_ok=True)
+        # print(date_tob_folder)
+        for file in tob1_files:
+            date_tob = 'p1' + file.name[-20:]
+            # print(date_tob)
+            print('Copied and renamed: ', date_tob)
+            if pathlib.Path(date_tob_folder/date_tob).is_file():
+                print('Ja existe')
+            else:
+                shutil.copyfile(src=file, dst=date_tob_folder/date_tob)
 
 # Main folder
 # path_teste = r'G:\Meu Drive\USP-SHS\Exemplo_apagar_dps'
@@ -136,3 +149,5 @@ a.convert_toa_to_tob1(path_toa_to_tob1=r"C:\Program Files (x86)\Campbellsci\Logg
 
 # Copy converted TOB1 files to tob1_complete folder
 a.join_mergedFiles_fullFiles()
+
+a.copying_renaming_tobFiles()
