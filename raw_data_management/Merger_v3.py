@@ -14,8 +14,10 @@ class Merger_TOA5():
 
         # Create merge folder
         # print(self.path.parents[0])
-        self.merge_folder = self.path.parents[0]/'merge'
+        self.merge_folder = self.path.parents[0]/f'merge_{self.path.name}'
         self.merge_folder.mkdir(exist_ok=True)
+
+        # print(self.path.name)
 
         # List files below threshold size
         self.incomplete_files = []
@@ -68,7 +70,7 @@ class Merger_TOA5():
 
         # Create merge folder
         # print(self.path.parents[0])
-        self.complete_folder = self.path.parents[0]/'tob1_complete'
+        self.complete_folder = self.path.parents[0]/f'tob1_complete_{self.path.name}'
         self.complete_folder.mkdir(exist_ok=True)
 
         self.complete_files = []
@@ -120,7 +122,7 @@ class Merger_TOA5():
 
     def copying_renaming_tobFiles(self):
         tob1_files = self.complete_folder.rglob('TOB1*.dat')
-        date_tob_folder = self.complete_folder.parents[0]/'tob1_date'
+        date_tob_folder = self.complete_folder.parents[0]/f'tob1_date_{self.path.name}'
         date_tob_folder.mkdir(exist_ok=True)
         # print(date_tob_folder)
         for file in tob1_files:
@@ -133,8 +135,10 @@ class Merger_TOA5():
                 shutil.copyfile(src=file, dst=date_tob_folder/date_tob)
 
 # Main folder
-# path_teste = r'G:\Meu Drive\USP-SHS\Exemplo_apagar_dps'
-path_teste = r'E:\Teste_merger_func'
+# path_teste = r'E:\Teste_merger_fase01'
+# path_teste = r'E:\Teste_merger_fase02'
+# path_teste = r'E:\Teste_merger_func_fase03'
+
 # Start program
 a = Merger_TOA5(path=path_teste)
 
