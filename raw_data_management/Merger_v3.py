@@ -17,7 +17,6 @@ class Merger_TOA5():
         self.merge_folder = self.path.parents[0]/f'merge_{self.path.name}'
         self.merge_folder.mkdir(exist_ok=True)
 
-        # print(self.path.name)
 
         # List files below threshold size
         self.incomplete_files = []
@@ -43,14 +42,10 @@ class Merger_TOA5():
                 self.files_to_merge_number.append(number)
                 shutil.copyfile(src=file, dst=self.merge_folder/file.name)
 
-        # print(self.files_to_merge_number)
-        # print(self.files_to_merge)
-
+        # Merging copied TOA5 files and deleting second half of the files
         for merge01 in self.files_to_merge_number:
             merge02 = merge01 + 1
-            # print('fadsf')
             for i in range(len(self.files_to_merge)):
-                # print(merge01)
                 if merge02 == int(self.files_to_merge[i].name[19:-20]):
                     print(f'Merging... {self.files_to_merge[i-1]} and {self.files_to_merge[i]}')
                     f1 = open(self.files_to_merge[i-1]).readlines()
@@ -73,6 +68,7 @@ class Merger_TOA5():
         self.complete_folder = self.path.parents[0]/f'tob1_complete_{self.path.name}'
         self.complete_folder.mkdir(exist_ok=True)
 
+        # Check if file already exist, otherwise copying TOB1 file to new folder
         self.complete_files = []
         for file in files:
             if file.stat().st_size >= min_fileSize:
@@ -87,12 +83,9 @@ class Merger_TOA5():
         # print(type(copyAll))
 
     def convert_toa_to_tob1(self, path_toa_to_tob1):
-        # path_toa_to_tob1 path_toa_to_tob1th
+        # Using Program called 'toa_to_tob1' from Campbellsci to convert merged TOA5 files to TOB1
         toa5_files_to_convert = self.merge_folder.rglob('TOA5*.dat')
         for toa5_file in toa5_files_to_convert:
-            # if toa5_file.is_file():
-            #     print('file exists')
-            # else:
             print('Converting: ',toa5_file)
 
             tob1_path = toa5_file.parents[0]
@@ -109,6 +102,7 @@ class Merger_TOA5():
                 os.system(f'"{path_toa_to_tob1}" {toa5_file} {tob1_pathfile}')
 
     def join_mergedFiles_fullFiles(self):
+        # Copying converted TOB1 files to full TOB1 files
         tob1_files_merged = self.merge_folder.rglob('TOB1*.dat')
         for file in tob1_files_merged:
             if pathlib.Path(self.complete_folder/file.name).is_file():
@@ -121,10 +115,13 @@ class Merger_TOA5():
                 shutil.copyfile(src=file, dst=self.complete_folder/file.name)
 
     def copying_renaming_tobFiles(self):
+        # Creating folder for date TOB1 files
         tob1_files = self.complete_folder.rglob('TOB1*.dat')
         date_tob_folder = self.complete_folder.parents[0]/f'tob1_date_{self.path.name}'
         date_tob_folder.mkdir(exist_ok=True)
         # print(date_tob_folder)
+
+        # Checking if file already exists, otherwise, copying and renaming file to new folder
         for file in tob1_files:
             date_tob = 'p1' + file.name[-20:]
             # print(date_tob)
@@ -134,24 +131,28 @@ class Merger_TOA5():
             else:
                 shutil.copyfile(src=file, dst=date_tob_folder/date_tob)
 
-# Main folder
-# path_teste = r'E:\Teste_merger_fase01'
-# path_teste = r'E:\Teste_merger_fase02'
-# path_teste = r'E:\Teste_merger_func_fase03'
 
-# Start program
-a = Merger_TOA5(path=path_teste)
+if __name__ == '__main__':
 
-# Identify and Merge data from same day
-a.identifyandmerge_sameday()
+    # Main folder
+    # path_teste = r'E:\Teste_merger_fase01'
+    # path_teste = r'E:\Teste_merger_fase02'
+    # path_teste = r'E:\Teste_merger_func_fase03'
 
-# Copy Tob1 files to newfolder
-a.copy_tob_files()
+    # Start program (Input: Main folder containing other folder containing TOA5 and TOB1 data)
+    a = Merger_TOA5(path=path_teste)
 
-# Convert TOA5 files to tob1 using merge folder
-a.convert_toa_to_tob1(path_toa_to_tob1=r"C:\Program Files (x86)\Campbellsci\LoggerNet\toa_to_tob1")
+    # Identify and Merge data from same day
+    a.identifyandmerge_sameday()
 
-# Copy converted TOB1 files to tob1_complete folder
-a.join_mergedFiles_fullFiles()
+    # Copy Tob1 files to newfolder
+    a.copy_tob_files()
 
-a.copying_renaming_tobFiles()
+    # Convert TOA5 files to tob1 using merge folder
+    a.convert_toa_to_tob1(path_toa_to_tob1=r"C:\Program Files (x86)\Campbellsci\LoggerNet\toa_to_tob1")
+
+    # Copy converted TOB1 files to tob1_complete folder
+    a.join_mergedFiles_fullFiles()
+
+    # Create new folder and rename TOB1 files to adjust for processing in EddyPro
+    a.copying_renaming_tobFiles()
