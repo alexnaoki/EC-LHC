@@ -10,16 +10,16 @@ from sklearn.model_selection import train_test_split
 
 class gapfilling_iab3:
     def __init__(self, ep_path, lf_path, iab2_path, iab1_path):
+        # File's Path
         self.iab3EP_path = pathlib.Path(ep_path)
         self.iab3LF_path = pathlib.Path(lf_path)
-
         self.iab2_path = pathlib.Path(iab2_path)
-
         self.iab1_path = pathlib.Path(iab1_path)
 
         self._read_files()
 
     def _read_files(self):
+        # Reading csv files
         self.iab3EP_files = self.iab3EP_path.rglob('eddypro*p08*full*.csv')
         self.iab3LF_files = self.iab3LF_path.rglob('TOA5*.flux*.dat')
         self.iab2_files = self.iab2_path.rglob('*.dat')
@@ -61,27 +61,35 @@ class gapfilling_iab3:
 
         iab_dfs = [self.iab3EP_df, self.iab3LF_df, self.iab2_df, self.iab1_df]
 
+        # Removing duplicated files based on 'TIMESTAMP'
         for df in iab_dfs:
             print('Duplicatas: ',df.duplicated().sum())
             df.drop_duplicates(subset='TIMESTAMP', keep='first', inplace=True)
             df.reset_index(inplace=True)
             print('Verificacao de Duplicatas: ', df.duplicated().sum())
 
+        # Merging files from EddyPro data and LowFreq data
         self.iab3_df = pd.merge(left=self.iab3EP_df, right=self.iab3LF_df, on='TIMESTAMP', how='inner')
 
     def _applying_filters(self):
+        # Flag using Mauder and Foken (2004)
         self.iab3_df.loc[self.iab3_df[['qc_H','qc_LE']].isin([0]).sum(axis=1)==2, 'flag_qaqc'] = 1
         self.iab3_df.loc[self.iab3_df[['qc_H','qc_LE']].isin([0]).sum(axis=1)!=2, 'flag_qaqc'] = 0
 
+        # Flag rain
         self.iab3_df.loc[self.iab3_df['precip_Tot']>0, 'flag_rain'] = 0
         self.iab3_df.loc[self.iab3_df['precip_Tot']==0, 'flag_rain'] = 1
 
+        # Flag signal strength
         min_signalStr = 0.8
         self.iab3_df.loc[self.iab3_df['H2O_sig_strgth_mean']>=min_signalStr, 'flag_signalStr'] = 1
         self.iab3_df.loc[self.iab3_df['H2O_sig_strgth_mean']<min_signalStr, 'flag_signalStr'] = 0
 
     def dropping_bad_data(self):
+        # Apply filters
         self._applying_filters()
+
+        # Creating a copy and changing to 'nan' filtered values
         iab3_df_copy = self.iab3_df.copy()
         iab3_df_copy.loc[
             (iab3_df_copy['flag_qaqc']==0)|
@@ -92,36 +100,49 @@ class gapfilling_iab3:
 
 
     def _adjacent_days(self, df,n_days=5):
+        # Selecting datetime adjectent
         delta_days = [i for i in range(-n_days, n_days+1, 1)]
         df[f'timestamp_adj_{n_days}'] = df['TIMESTAMP'].apply(lambda x: [x + dt.timedelta(days=i) for i in delta_days])
 
     def mdv_test(self, n_days=5):
+        # Dropping bad data
         iab3_df_copy = self.dropping_bad_data()
         iab3_df_copy.dropna(subset=['ET'], inplace=True)
+
+        # Splitting Dataframe into two parts
         a, b = train_test_split(iab3_df_copy[['TIMESTAMP','ET']])
 
+        # Creating Dataframe with full TIMESTAMP, based on the Dataframe of good data
         date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
                                    end=iab3_df_copy['TIMESTAMP'].max(),
                                    freq='30min')
         df_date_range = pd.DataFrame({'TIMESTAMP':date_range})
+
+        # Merge and creating DataFrame with first part of good data and full TIMESTAMP
         iab3_alldates = pd.merge(left=df_date_range, right=a, on='TIMESTAMP', how='outer')
         # iab3_alldates = pd.merge(left=iab3_alldates, right=b, on='TIMESTAMP', how='outer')
+
+        # Changing column name of second part of good data
+        # To later be compared with gapfilled data
         b.rename(columns={"ET":'ET_val_mdv'}, inplace=True)
-        # print(b)
+
+        # Merge DataFrame with second part of good data and full TIMESTAMP
         iab3_alldates = pd.merge(left=iab3_alldates, right=b, on='TIMESTAMP', how='outer')
+
+        # Create new column for datetime adjecent days
         self._adjacent_days(df=iab3_alldates, n_days=n_days)
 
-        # print(iab3_alldates)
-
+        # Iterating the 'nan' ET and using the non 'nan' ET and adjecent days for filling the data
         for i, row in iab3_alldates.loc[iab3_alldates['ET'].isna()].iterrows():
             iab3_alldates.loc[i, f'ET_mdv_{n_days}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n_days}']))&
                                                                          (iab3_alldates['ET'].notna()), 'ET'].mean()
 
-        # print(iab3_alldates)
 
+        # Creating Dataframe for calculate metrics and removing non filled data
         iab3_metrics = iab3_alldates[['ET_val_mdv',f'ET_mdv_{n_days}']].copy()
         iab3_metrics.dropna(inplace=True)
-        # print(iab3_metrics)
+
+        # Checking metrics
         print(mean_absolute_error(iab3_metrics['ET_val_mdv'], iab3_metrics[f'ET_mdv_{n_days}']))
         print(iab3_metrics.corr())
 
