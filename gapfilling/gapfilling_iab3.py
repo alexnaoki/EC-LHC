@@ -7,6 +7,8 @@ import datetime as dt
 from sklearn.metrics import mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
 
 class gapfilling_iab3:
     def __init__(self, ep_path, lf_path, iab2_path, iab1_path):
@@ -17,6 +19,8 @@ class gapfilling_iab3:
         self.iab1_path = pathlib.Path(iab1_path)
 
         self._read_files()
+
+        # self._gagc()
 
     def _read_files(self):
         # Reading csv files
@@ -71,6 +75,11 @@ class gapfilling_iab3:
         # Merging files from EddyPro data and LowFreq data
         self.iab3_df = pd.merge(left=self.iab3EP_df, right=self.iab3LF_df, on='TIMESTAMP', how='inner')
 
+        # Resampling IAB2
+        self.iab2_df_resample = self.iab2_df.set_index('TIMESTAMP').resample('30min').mean()
+        self.iab2_df_resample.reset_index(inplace=True)
+        # print(self.iab2_df_resample)
+
     def _applying_filters(self):
         # Flag using Mauder and Foken (2004)
         self.iab3_df.loc[self.iab3_df[['qc_H','qc_LE']].isin([0]).sum(axis=1)==2, 'flag_qaqc'] = 1
@@ -94,15 +103,54 @@ class gapfilling_iab3:
         iab3_df_copy.loc[
             (iab3_df_copy['flag_qaqc']==0)|
             (iab3_df_copy['flag_rain']==0)|
-            (iab3_df_copy['flag_signalStr']==0), 'ET'] = np.nan
+            (iab3_df_copy['flag_signalStr']==0)|
+            (iab3_df_copy['LE']<0), 'ET'] = np.nan
 
         return iab3_df_copy
-
 
     def _adjacent_days(self, df,n_days=5):
         # Selecting datetime adjectent
         delta_days = [i for i in range(-n_days, n_days+1, 1)]
         df[f'timestamp_adj_{n_days}'] = df['TIMESTAMP'].apply(lambda x: [x + dt.timedelta(days=i) for i in delta_days])
+
+    def _gagc(self):
+        self.iab3_df['psychrometric_kPa'] = 0.665*10**(-3)*self.iab3_df['air_pressure']/1000
+        self.iab3_df['delta'] = 4098*(0.6108*np.e**(17.27*(self.iab3_df['air_temperature']-273.15)/((self.iab3_df['air_temperature']-273.15)+237.3)))/((self.iab3_df['air_temperature']-273.15)+237.3)**2
+        self.iab3_df['VPD_kPa'] = (self.iab3_df['es']-self.iab3_df['e'])/1000
+        self.iab3_df['LE_MJmh'] = self.iab3_df['LE']*3600/1000000
+        self.iab3_df['Rn_Avg_MJmh'] = self.iab3_df['Rn_Avg']*3600/1000000
+        self.iab3_df['shf_Avg_MJmh'] = self.iab3_df[['shf_Avg(1)','shf_Avg(2)']].mean(axis=1)*3600/1000000
+
+        self.iab3_df['ga'] = (self.iab3_df['wind_speed']/self.iab3_df['u*']**2)**(-1)
+        self.iab3_df['gc'] = (self.iab3_df['LE_MJmh']*self.iab3_df['psychrometric_kPa']*self.iab3_df['ga'])/(self.iab3_df['delta']*(self.iab3_df['Rn_Avg_MJmh']-self.iab3_df['shf_Avg_MJmh'])+self.iab3_df['air_density']*3600*1.013*10**(-3)*self.iab3_df['VPD_kPa']*self.iab3_df['ga']-self.iab3_df['LE_MJmh']*self.iab3_df['delta']-self.iab3_df['LE_MJmh']*self.iab3_df['psychrometric_kPa'])
+
+        # print(self.iab3_df['gc'].describe())
+        self.iab3_df_gagc = self.iab3_df.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
+        self.iab3_df_gagc.reset_index(inplace=True)
+        # print(self.iab3_df_gagc)
+
+    def _adjusting_input_pm(self):
+        # self.iab2_df_resample['delta'] = 4098*(0.6108*np.e**(17.27*self.iab2_df_resample['AirTC_Avg']/(self.iab2_df_resample['AirTC_Avg']+237.3)))/(self.iab2_df_resample['AirTC_Avg']+237.3)**2
+
+        # self.iab2_df_resample['es'] = 0.6108*np.e**(17.27*self.iab2_df_resample['AirTC_Avg']/(self.iab2_df_resample['AirTC_Avg']+237.3))
+
+        self.iab12_df = pd.merge(left=self.iab1_df[['TIMESTAMP','RH']],
+                                 right=self.iab2_df_resample[['TIMESTAMP', 'AirTC_Avg','CNR_Wm2_Avg','G_Wm2_Avg']],
+                                 on='TIMESTAMP', how='inner')
+
+        self.iab12_df['delta'] = 4098*(0.6108*np.e**(17.27*self.iab12_df['AirTC_Avg']/(self.iab12_df['AirTC_Avg']+237.3)))/(self.iab12_df['AirTC_Avg']+237.3)**2
+        self.iab12_df['es'] = 0.6108*np.e**(17.27*self.iab12_df['AirTC_Avg']/(self.iab12_df['AirTC_Avg']+237.3))
+        self.iab12_df['ea'] = self.iab12_df['RH']/100*self.iab12_df['es']
+        self.iab12_df['VPD'] = self.iab12_df['es']-self.iab12_df['ea']
+
+        altitude = 790
+        self.iab12_df['P'] = 101.3*((293-0.0065*altitude)/293)**5.26
+        self.iab12_df['psychrometric_cte'] = 0.665*10**(-3)*self.iab12_df['P']
+
+        self.iab12_df['air_density'] = 1.088
+
+        self.iab12_df['Rn_Avg_MJmh'] = self.iab12_df['CNR_Wm2_Avg']*3600/1000000
+        self.iab12_df['G_Avg_MJmh'] = self.iab12_df['G_Wm2_Avg']*3600/1000000
 
     def mdv_test(self, n_days=5):
         # Dropping bad data
@@ -150,16 +198,97 @@ class gapfilling_iab3:
         column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
         column_x_ET = column_x + ['ET']
 
-        iab3 = self.iab3_df_copy.dropna(subset=column_x_ET)
-        X = iab3[column_x]
-        y = iab3['ET']
+        iab3_df_copy = self.dropping_bad_data()
+        iab3_df_copy.dropna(subset=column_x_ET, inplace=True)
+
+        X = iab3_df_copy[column_x]
+        y = iab3_df_copy['ET']
 
         train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1)
-        et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae')
+        print(val_y)
+
+        et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae', max_depth=2)
         et_model_RFR.fit(train_X, train_y)
 
         val_prediction_RFR = et_model_RFR.predict(val_X)
+        # val_y['ET_rfr'] = val_prediction_RFR
+
+        iab3_metrics = pd.DataFrame({'ET':val_y.values, 'ET_rfr':val_prediction_RFR})
+
         mae_RFR = mean_absolute_error(val_y, val_prediction_RFR)
+        print(mae_RFR)
+
+        print(iab3_metrics.corr())
+        # print(val_X.)
+
+    def lr_test(self):
+        column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+        column_x_ET = column_x + ['ET']
+
+        iab3_df_copy = self.dropping_bad_data()
+        iab3_df_copy.dropna(subset=column_x_ET, inplace=True)
+
+        X = iab3_df_copy[column_x]
+        y = iab3_df_copy['ET']
+
+        train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
+
+        lm = LinearRegression()
+        model = lm.fit(train_X, train_y)
+
+        print(f'''ET = {column_x[0]}*{model.coef_[0]}
+              +{column_x[1]}*{model.coef_[1]}
+              +{column_x[2]}*{model.coef_[2]}
+              +{column_x[3]}*{model.coef_[3]}
+              +{column_x[4]}*{model.coef_[4]}
+              +{column_x[5]}*{model.coef_[5]}
+              +{column_x[6]}*{model.coef_[6]}
+              +{column_x[7]}*{model.coef_[7]}
+              +{column_x[8]}*{model.coef_[8]}+{model.intercept_}''')
+
+        lm_prediction = model.predict(val_X)
+
+        mae_lm = mean_absolute_error(val_y, lm_prediction)
+        print(mae_lm)
+
+        iab3_metrics = pd.DataFrame({'ET':val_y.values, 'ET_lr':lm_prediction})
+        print(iab3_metrics.corr())
+
+    def pm_test(self):
+        self._adjusting_input_pm()
+        self._gagc()
+
+        pm_inputs_iab3 = ['delta', 'Rn_Avg_MJmh', 'shf_Avg_MJmh', 'air_density', 'VPD_kPa', 'ga','LE_MJmh','psychrometric_kPa', 'gc', 'TIMESTAMP']
+        pm_inputs_iab3_ET = pm_inputs_iab3 + ['ET']
+
+        iab3_df_copy = self.dropping_bad_data()
+
+        iab3_df_copy.dropna(subset=pm_inputs_iab3_ET, inplace=True)
+
+        X = iab3_df_copy[pm_inputs_iab3]
+        y = iab3_df_copy['ET']
+
+        # print(X)
+
+        train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
+        # print(val_X)
+        val_X = val_X.copy()
+        for i, row in self.iab3_df_gagc.iterrows():
+            val_X.loc[(val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(val_X['TIMESTAMP'].dt.year==row['TIMESTAMP'].year), 'ga_mes'] = row['ga']
+            val_X.loc[(val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(val_X['TIMESTAMP'].dt.year==row['TIMESTAMP'].year), 'gc_mes'] = row['gc']
+
+        val_X['ET_est_pm'] = (val_X['delta']*(val_X['Rn_Avg_MJmh']-val_X['shf_Avg_MJmh'])+3600*val_X['air_density']*1.013*10**(-3)*val_X['VPD_kPa']*val_X['ga_mes'])/(2.45*(val_X['delta']+val_X['psychrometric_kPa']*(1+val_X['ga_mes']/val_X['gc_mes'])))
+
+        print(mean_absolute_error(val_y, val_X['ET_est_pm']))
+
+        # print(val_X['ET_est_pm'])
+        # print(val_y)
+
+        # for i,row in self.iab3_df_gagc.iterrows():
+        #     val_X.loc[val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month, 'ET_est_pm'] = (val_X['delta']*(val_X['Rn_Avg_MJmh']-val_X['shf_Avg_MJmh'])+3600*val_X['air_density']*1.013*10**(-3)*val_X['VPD_kPa']*row['ga'])/(2.45*(val_X['delta']+val_X['psychrometric_kPa']*(1+row['ga']/row['gc'])))
+
+
+            # print(val_X.loc[val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month])
 
 
 if __name__ == '__main__':
