@@ -3,11 +3,13 @@ import numpy as np
 import pathlib
 import matplotlib.pyplot as plt
 import datetime as dt
+import tensorflow as tf
 
 from sklearn.metrics import mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn import preprocessing
 
 
 class gapfilling_iab3:
@@ -152,6 +154,44 @@ class gapfilling_iab3:
         self.iab12_df['Rn_Avg_MJmh'] = self.iab12_df['CNR_Wm2_Avg']*3600/1000000
         self.iab12_df['G_Avg_MJmh'] = self.iab12_df['G_Wm2_Avg']*3600/1000000
 
+    def dnn_model(self, train_X, val_X, train_y, val_y, learning_rate, epochs, batch_size):
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(51)
+
+        for e in epochs:
+            for l in learning_rate:
+                optimizer = tf.keras.optimizers.SGD(lr=l)
+                for b in batch_size:
+                    model = tf.keras.Sequential([
+                        tf.keras.layers.Dense(1000, input_shape=[np.shape(train_X)[1]], activation='relu'),
+                        # tf.keras.layers.Dropout(0.2),
+                        tf.keras.layers.Dense(800, activation='relu'),
+                        tf.keras.layers.Dense(600, activation='relu'),
+                        tf.keras.layers.Dense(150, activation='relu'),
+                        tf.keras.layers.Dense(1, activation='linear')
+                        ])
+
+                    model.compile(optimizer=optimizer,
+                                  loss=tf.keras.losses.Huber(),
+                                  metrics=['mae'])
+                    history = model.fit(x=train_X, y=train_y,
+                                        epochs=e, batch_size=b, verbose=0,
+                                        validation_data=(val_X, val_y))
+                    last_mae_t = history.history['mae'][-1]
+                    last_mae_v = history.history['val_mae'][-1]
+
+                    plt.title(f'Batch_size: {b} | LR: {l:.2f} | MAE_t: {last_mae_t:.4f} | MAE_v: {last_mae_v:.4f}')
+                    plt.plot(history.history['mae'], label='Training')
+                    plt.plot(history.history['val_mae'], label='Validation')
+
+                    plt.legend(loc='best')
+                    plt.xlabel('# Epochs')
+                    plt.ylabel('MAE')
+                    # plt.savefig(r'G:\Meu Drive\USP-SHS\Resultados_processados\Gapfilling\ANN\imgs\dnn\{}-epochs_{}-lr_{}-bs.png'.format(e,l,b))
+                    plt.show()
+                    tf.keras.backend.clear_session()
+                    tf.random.set_seed(51)
+
     def mdv_test(self, n_days=5):
         # Dropping bad data
         iab3_df_copy = self.dropping_bad_data()
@@ -289,6 +329,29 @@ class gapfilling_iab3:
 
 
             # print(val_X.loc[val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month])
+
+    def dnn_test(self):
+        # Dropping bad data
+        iab3_df_copy = self.dropping_bad_data()
+        iab3_df_copy.dropna(subset=['ET'], inplace=True)
+        column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+        column_x_ET = column_x + ['ET']
+
+        X = iab3_df_copy[column_x]
+        y = iab3_df_copy['ET']
+
+        X_scale = preprocessing.scale(X)
+        train_X, val_X, train_y, val_y = train_test_split(X_scale, y, random_state=1, shuffle=True)
+
+        self.dnn_model(train_X=train_X,
+                       val_X=val_X,
+                       train_y=train_y,
+                       val_y=val_y,
+                       learning_rate=[0.5e-1, 1e-2],
+                       epochs=[100],
+                       batch_size=[512])
+
+
 
 
 if __name__ == '__main__':
