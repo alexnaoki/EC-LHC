@@ -192,6 +192,31 @@ class gapfilling_iab3:
                     tf.keras.backend.clear_session()
                     tf.random.set_seed(51)
 
+    def lstm_univariate_model(self, length, generator_train, generator_val, epochs=10):
+        tf.keras.backend.clear_session():
+        tf.keras.set_seed(51)
+
+        model = tf.keras.Sequential([
+            tf.keras.layers.Masking(mask_value=0, input_shape=(length, 1)),
+            tf.keras.layers.LSTM(32, activation='relu'),
+            tf.keras.layers.Dense(1)
+        ])
+
+        model.compile(loss=tf.keras.losses.Hubber(), optimizer='adam', metrics=['mae'])
+        history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
+
+        plt.title('')
+        plt.plot(history.history['mae'], label='Training')
+        plt.plot(history.history['val_mae'], label='Validation')
+
+        plt.legend(loc='best')
+        plt.xlabel('# Epochs')
+        plt.ylabel('MAE')
+        plt.show()
+
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(51)
+
     def mdv_test(self, n_days=5):
         # Dropping bad data
         iab3_df_copy = self.dropping_bad_data()
@@ -350,6 +375,9 @@ class gapfilling_iab3:
                        learning_rate=[0.5e-1, 1e-2],
                        epochs=[100],
                        batch_size=[512])
+
+    def lstm_univariate_test(self):
+        pass
 
 
 
