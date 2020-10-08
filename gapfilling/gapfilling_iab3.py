@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import datetime as dt
 import tensorflow as tf
 
+from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
+
 from sklearn.metrics import mean_absolute_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -154,6 +156,14 @@ class gapfilling_iab3:
         self.iab12_df['Rn_Avg_MJmh'] = self.iab12_df['CNR_Wm2_Avg']*3600/1000000
         self.iab12_df['G_Avg_MJmh'] = self.iab12_df['G_Wm2_Avg']*3600/1000000
 
+    def lstm_model_forecast(self, model, series, window_size):
+        ds = tf.data.Dataset.from_tensor_slices(series)
+        ds = ds.window(window_size, shift=1, drop_remainder=True)
+        ds = ds.flat_map(lambda w: w.batch(window_size))
+        ds = ds.batch(32).prefetch(1)
+        forecast = model.predict(ds)
+        return forecast
+
     def dnn_model(self, train_X, val_X, train_y, val_y, learning_rate, epochs, batch_size):
         tf.keras.backend.clear_session()
         tf.random.set_seed(51)
@@ -193,8 +203,8 @@ class gapfilling_iab3:
                     tf.random.set_seed(51)
 
     def lstm_univariate_model(self, length, generator_train, generator_val, epochs=10):
-        tf.keras.backend.clear_session():
-        tf.keras.set_seed(51)
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(51)
 
         model = tf.keras.Sequential([
             tf.keras.layers.Masking(mask_value=0, input_shape=(length, 1)),
@@ -202,7 +212,7 @@ class gapfilling_iab3:
             tf.keras.layers.Dense(1)
         ])
 
-        model.compile(loss=tf.keras.losses.Hubber(), optimizer='adam', metrics=['mae'])
+        model.compile(loss=tf.keras.losses.Huber(), optimizer='adam', metrics=['mae'])
         history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
 
         plt.title('')
@@ -216,6 +226,7 @@ class gapfilling_iab3:
 
         tf.keras.backend.clear_session()
         tf.random.set_seed(51)
+        return model
 
     def mdv_test(self, n_days=5):
         # Dropping bad data
@@ -312,6 +323,7 @@ class gapfilling_iab3:
               +{column_x[8]}*{model.coef_[8]}+{model.intercept_}''')
 
         lm_prediction = model.predict(val_X)
+        print(lm_prediction)
 
         mae_lm = mean_absolute_error(val_y, lm_prediction)
         print(mae_lm)
@@ -376,11 +388,127 @@ class gapfilling_iab3:
                        epochs=[100],
                        batch_size=[512])
 
-    def lstm_univariate_test(self):
-        pass
+    def lstm_univariate_test(self, length=12, batch_size=3):
+        column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+
+        iab3_df_copy = self.dropping_bad_data()
+        iab3_df_copy.dropna(subset=column_x, inplace=True)
+
+        date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                   end=iab3_df_copy['TIMESTAMP'].max(),
+                                   freq='30min')
+
+
+        df_date_range = pd.DataFrame({'TIMESTAMP': date_range})
+
+        iab3_alldates = pd.merge(left=df_date_range, right=iab3_df_copy, how='outer')
+        iab3_alldates.loc[iab3_alldates['ET'].isnull(), "ET"] = 0
+
+        train_X, val_X = train_test_split(iab3_alldates['ET'], shuffle=False)
+
+        generator_train = TimeseriesGenerator(train_X, train_X, length=length, batch_size=batch_size)
+        generator_val = TimeseriesGenerator(val_X.to_numpy(), val_X.to_numpy(), length=length, batch_size=batch_size)
+
+        model = self.lstm_univariate_model(length=length,
+                                           generator_train=generator_train,
+                                           generator_val=generator_val,
+                                           epochs=10)
+        lstm_forecast = self.lstm_model_forecast(model, val_X[..., np.newaxis], length)
+        lstm_forecast = np.insert(lstm_forecast, 0, [0 for i in range(length-1)])
+
+        validation_data = pd.DataFrame({'lstm_forecast': lstm_forecast})
+        validation_data['real_data'] = val_X.values
+
+        print(mean_absolute_error(validation_data.loc[validation_data['real_data']!=0, 'real_data'], validation_data.loc[validation_data['real_data']!=0, 'lstm_forecast']))
+
+        print(validation_data.loc[validation_data['real_data']!=0, ['real_data', 'lstm_forecast']].corr())
+
+    def fill_ET(self, listOfmethods):
+        iab3_ET_timestamp = self.dropping_bad_data()
+        if 'mdv' in listOfmethods:
+            n_days_list = [5]
+
+            iab3_df_copy = self.dropping_bad_data()
+            iab3_df_copy.dropna(subset=['ET'], inplace=True)
+
+            a, b = train_test_split(iab3_df_copy[['TIMESTAMP', 'ET']])
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
+            df_date_range = pd.DataFrame({'TIMESTAMP':date_range})
+
+            iab3_alldates = pd.merge(left=df_date_range, right=a, on='TIMESTAMP', how='outer')
+
+            b.rename(columns={"ET":'ET_val_mdv'}, inplace=True)
+
+            iab3_alldates = pd.merge(left=iab3_alldates, right=b, on='TIMESTAMP', how='outer')
+
+            column_names = ['TIMESTAMP']
+            for n in n_days_list:
+                column_names.append(f'ET_mdv_{n}')
+                self._adjacent_days(df=iab3_alldates, n_days=n)
+
+                for i, row in iab3_alldates.loc[iab3_alldates['ET'].isna()].iterrows():
+                    iab3_alldates.loc[i, f'ET_mdv_{n}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n}']))&
+                                                                                 (iab3_alldates['ET'].notna()), 'ET'].mean()
+
+            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_alldates[column_names], on='TIMESTAMP', how='outer')
+            # print(iab3_ET_timestamp)
+            # print(iab3_alldates)
+                # iab3_metrics = iab3_alldates[['ET_val_mdv',f'ET_mdv_{n}']].copy()
+                # iab3_metrics.dropna(inplace=True)
+
+                # print(mean_absolute_error(iab3_metrics['ET_val_mdv'], iab3_metrics[f'ET_mdv_{n}']))
+                # print(iab3_metrics.corr())
+        if 'lr' in listOfmethods:
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+            column_x_ET = column_x + ['ET']
+            iab3_df_copy_na = iab3_df_copy.copy()
+            iab3_df_copy_na.dropna(subset=column_x_ET, inplace=True)
+
+            X = iab3_df_copy_na[column_x]
+            y = iab3_df_copy_na['ET']
+
+            train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
+
+            lm = LinearRegression()
+            model = lm.fit(train_X, train_y)
+
+            lm_prediction = model.predict(val_X)
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+            lm_fill = model.predict(iab3_df_copy[column_x])
+            iab3_df_copy['ET_lr'] = lm_fill
+            # print(iab3_df_copy)
+
+            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_lr']], on='TIMESTAMP', how='outer')
+        if 'rfr' in listOfmethods:
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+            column_x_ET = column_x + ['ET']
+            iab3_df_copy_na = iab3_df_copy.copy()
+            iab3_df_copy_na.dropna(subset=column_x_ET, inplace=True)
+
+            X = iab3_df_copy_na[column_x]
+            y = iab3_df_copy_na['ET']
+
+            train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
+
+            et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae', max_depth=2)
+            et_model_RFR.fit(train_X, train_y)
+
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+            rfr_prediction = et_model_RFR.predict(iab3_df_copy[column_x])
+            iab3_df_copy['ET_rfr'] = rfr_prediction
+
+            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
 
 
 
+
+
+        print(iab3_ET_timestamp[['ET_lr','ET_mdv_5', 'ET_rfr']].describe())
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
