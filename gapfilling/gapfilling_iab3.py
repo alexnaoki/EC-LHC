@@ -168,6 +168,8 @@ class gapfilling_iab3:
         tf.keras.backend.clear_session()
         tf.random.set_seed(51)
 
+        models = []
+
         for e in epochs:
             for l in learning_rate:
                 optimizer = tf.keras.optimizers.SGD(lr=l)
@@ -190,17 +192,20 @@ class gapfilling_iab3:
                     last_mae_t = history.history['mae'][-1]
                     last_mae_v = history.history['val_mae'][-1]
 
-                    plt.title(f'Batch_size: {b} | LR: {l:.2f} | MAE_t: {last_mae_t:.4f} | MAE_v: {last_mae_v:.4f}')
-                    plt.plot(history.history['mae'], label='Training')
-                    plt.plot(history.history['val_mae'], label='Validation')
+                    models.append(model)
 
-                    plt.legend(loc='best')
-                    plt.xlabel('# Epochs')
-                    plt.ylabel('MAE')
+                    # plt.title(f'Batch_size: {b} | LR: {l:.2f} | MAE_t: {last_mae_t:.4f} | MAE_v: {last_mae_v:.4f}')
+                    # plt.plot(history.history['mae'], label='Training')
+                    # plt.plot(history.history['val_mae'], label='Validation')
+                    #
+                    # plt.legend(loc='best')
+                    # plt.xlabel('# Epochs')
+                    # plt.ylabel('MAE')
                     # plt.savefig(r'G:\Meu Drive\USP-SHS\Resultados_processados\Gapfilling\ANN\imgs\dnn\{}-epochs_{}-lr_{}-bs.png'.format(e,l,b))
-                    plt.show()
+                    # plt.show()
                     tf.keras.backend.clear_session()
                     tf.random.set_seed(51)
+        return models
 
     def lstm_univariate_model(self, length, generator_train, generator_val, epochs=10):
         tf.keras.backend.clear_session()
@@ -355,6 +360,7 @@ class gapfilling_iab3:
             val_X.loc[(val_X['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(val_X['TIMESTAMP'].dt.year==row['TIMESTAMP'].year), 'gc_mes'] = row['gc']
 
         val_X['ET_est_pm'] = (val_X['delta']*(val_X['Rn_Avg_MJmh']-val_X['shf_Avg_MJmh'])+3600*val_X['air_density']*1.013*10**(-3)*val_X['VPD_kPa']*val_X['ga_mes'])/(2.45*(val_X['delta']+val_X['psychrometric_kPa']*(1+val_X['ga_mes']/val_X['gc_mes'])))
+        print(val_X['ET_est_pm'])
 
         print(mean_absolute_error(val_y, val_X['ET_est_pm']))
 
@@ -503,12 +509,62 @@ class gapfilling_iab3:
             iab3_df_copy['ET_rfr'] = rfr_prediction
 
             iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
+        if 'pm' in listOfmethods:
+            self._adjusting_input_pm()
+            self._gagc()
+
+            pm_inputs_iab3 = ['delta', 'Rn_Avg_MJmh', 'shf_Avg_MJmh', 'air_density', 'VPD_kPa', 'ga','LE_MJmh','psychrometric_kPa', 'gc', 'TIMESTAMP']
+            pm_inputs_iab3_ET = pm_inputs_iab3 + ['ET']
+
+            iab3_df_copy = self.dropping_bad_data()
+            iab3_df_copy.dropna(subset=pm_inputs_iab3, inplace=True)
+            for i, row in self.iab3_df_gagc.iterrows():
+                iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(iab3_df_copy['TIMESTAMP'].dt.year), 'ga_mes'] = row['ga']
+                iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(iab3_df_copy['TIMESTAMP'].dt.year), 'gc_mes'] = row['gc']
+
+            iab3_df_copy['ET_pm'] = (iab3_df_copy['delta']*(iab3_df_copy['Rn_Avg_MJmh']-iab3_df_copy['shf_Avg_MJmh'])+3600*iab3_df_copy['air_density']*1.013*10**(-3)*iab3_df_copy['VPD_kPa']*iab3_df_copy['ga_mes'])/(2.45*(iab3_df_copy['delta']+iab3_df_copy['psychrometric_kPa']*(1+iab3_df_copy['ga_mes']/iab3_df_copy['gc_mes'])))
+            # print(self.iab3_df_gagc[['TIMESTAMP','ga', 'gc']])
+            # print(iab3_df_copy.loc[iab3_df_copy['ET_pm']>0])
+            # print(iab3_df_copy[pm_inputs_iab3+['ET_pm']].describe())
+
+            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
+        if 'dnn' in listOfmethods:
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+            column_x_ET = column_x + ['ET']
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+            iab3_df_copy_na = iab3_df_copy.copy()
+            iab3_df_copy_na.dropna(subset=['ET'], inplace=True)
+
+
+            X = iab3_df_copy_na[column_x]
+            y = iab3_df_copy_na['ET']
+
+            X_scale = preprocessing.scale(X)
+            # train_X, val_X, train_y, val_y = train_test_split(X_scale, y, random_state=1, shuffle=True)
+
+            models = self.dnn_model(train_X=X_scale,val_X=X_scale,
+                                    train_y=y, val_y=y,
+                                    learning_rate=[1e-2], epochs=[10], batch_size=[512])
+
+            X_predict = iab3_df_copy[column_x]
+            X_predict = preprocessing.scale(X_predict)
+
+            y_predict = models[0].predict(X_predict)
+
+            iab3_df_copy['ET_dnn'] = y_predict
+
+            # print(iab3_df_copy['ET_dnn'].describe())
+            # print(models[0].predict(X_predict))
+            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_dnn']], on='TIMESTAMP', how='outer')
 
 
 
 
 
-        print(iab3_ET_timestamp[['ET_lr','ET_mdv_5', 'ET_rfr']].describe())
+
+        # print(iab3_ET_timestamp[['ET_lr','ET_pm']].describe())
+        # print(iab3_ET_timestamp.loc[iab3_ET_timestamp['ET_pm'].notna()].describe())
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
