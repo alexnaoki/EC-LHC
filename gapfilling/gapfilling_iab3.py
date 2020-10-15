@@ -430,8 +430,10 @@ class gapfilling_iab3:
         print(validation_data.loc[validation_data['real_data']!=0, ['real_data', 'lstm_forecast']].corr())
 
     def fill_ET(self, listOfmethods):
-        iab3_ET_timestamp = self.dropping_bad_data()
+        self.iab3_ET_timestamp = self.dropping_bad_data()
+        self.ET_names = []
         if 'mdv' in listOfmethods:
+            print('MDV...')
             n_days_list = [5]
 
             iab3_df_copy = self.dropping_bad_data()
@@ -459,15 +461,18 @@ class gapfilling_iab3:
                     iab3_alldates.loc[i, f'ET_mdv_{n}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n}']))&
                                                                                  (iab3_alldates['ET'].notna()), 'ET'].mean()
 
-            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_alldates[column_names], on='TIMESTAMP', how='outer')
-            # print(iab3_ET_timestamp)
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[column_names], on='TIMESTAMP', how='outer')
+            # print(self.iab3_ET_timestamp)
             # print(iab3_alldates)
                 # iab3_metrics = iab3_alldates[['ET_val_mdv',f'ET_mdv_{n}']].copy()
                 # iab3_metrics.dropna(inplace=True)
 
                 # print(mean_absolute_error(iab3_metrics['ET_val_mdv'], iab3_metrics[f'ET_mdv_{n}']))
                 # print(iab3_metrics.corr())
+
         if 'lr' in listOfmethods:
+            print('LR...')
+            self.ET_names.append('ET_lr')
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
             column_x_ET = column_x + ['ET']
@@ -488,8 +493,12 @@ class gapfilling_iab3:
             iab3_df_copy['ET_lr'] = lm_fill
             # print(iab3_df_copy)
 
-            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_lr']], on='TIMESTAMP', how='outer')
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_lr']], on='TIMESTAMP', how='outer')
+
         if 'rfr' in listOfmethods:
+            print('RFR...')
+            self.ET_names.append('ET_rfr')
+
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
             column_x_ET = column_x + ['ET']
@@ -508,8 +517,12 @@ class gapfilling_iab3:
             rfr_prediction = et_model_RFR.predict(iab3_df_copy[column_x])
             iab3_df_copy['ET_rfr'] = rfr_prediction
 
-            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
+
         if 'pm' in listOfmethods:
+            print('PM...')
+            self.ET_names.append('ET_pm')
+
             self._adjusting_input_pm()
             self._gagc()
 
@@ -527,8 +540,12 @@ class gapfilling_iab3:
             # print(iab3_df_copy.loc[iab3_df_copy['ET_pm']>0])
             # print(iab3_df_copy[pm_inputs_iab3+['ET_pm']].describe())
 
-            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
+
         if 'dnn' in listOfmethods:
+            print('DNN...')
+            self.ET_names.append('ET_dnn')
+
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
             column_x_ET = column_x + ['ET']
