@@ -556,15 +556,56 @@ class gapfilling_iab3:
 
             # print(iab3_df_copy['ET_dnn'].describe())
             # print(models[0].predict(X_predict))
-            iab3_ET_timestamp = pd.merge(left=iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_dnn']], on='TIMESTAMP', how='outer')
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_dnn']], on='TIMESTAMP', how='outer')
+
+        if 'lstm_u' in listOfmethods:
+            print('LSTM_u...')
+            self.ET_names.append('ET_lstm_u')
+
+            length = 12
+            batch_size = 3
+
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
 
 
+            df_date_range = pd.DataFrame({'TIMESTAMP': date_range})
+
+            iab3_alldates = pd.merge(left=df_date_range, right=iab3_df_copy, how='outer')
+            iab3_alldates.loc[iab3_alldates['ET'].isnull(), "ET"] = 0
+
+            train_X, val_X = train_test_split(iab3_alldates['ET'], shuffle=False)
+
+            generator_train = TimeseriesGenerator(train_X, train_X, length=length, batch_size=batch_size)
+            generator_val = TimeseriesGenerator(val_X, val_X, length=length, batch_size=batch_size)
+            model = self.lstm_univariate_model(length=length,
+                                               generator_train=generator_train,
+                                               generator_val=generator_val,
+                                               epochs=2)
+            lstm_forecast = self.lstm_model_forecast(model, iab3_alldates['ET'].to_numpy()[..., np.newaxis], length)
+            lstm_forecast = np.insert(lstm_forecast, 0, [0 for i in range(length-1)])
+
+            validation_data = pd.DataFrame({'TIMESTAMP': date_range})
+            validation_data['ET_lstm_u'] = lstm_forecast
+
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=validation_data[['TIMESTAMP','ET_lstm_u']], on='TIMESTAMP', how='outer')
+
+            # print(self.iab3_ET_timestamp['ET_lstm_u'].describe())
 
 
+        print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
+        # print(self.iab3_ET_timestamp[['ET_lr','ET_pm']].describe())
+        # print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['ET_pm'].notna()].describe())
+        # print(self.iab3_ET_timestamp[['ET', 'ET_lstm_u']].corr())
 
-
-        # print(iab3_ET_timestamp[['ET_lr','ET_pm']].describe())
-        # print(iab3_ET_timestamp.loc[iab3_ET_timestamp['ET_pm'].notna()].describe())
+    def plot(self):
+        print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
