@@ -220,14 +220,14 @@ class gapfilling_iab3:
         model.compile(loss=tf.keras.losses.Huber(), optimizer='adam', metrics=['mae'])
         history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
 
-        plt.title('')
-        plt.plot(history.history['mae'], label='Training')
-        plt.plot(history.history['val_mae'], label='Validation')
-
-        plt.legend(loc='best')
-        plt.xlabel('# Epochs')
-        plt.ylabel('MAE')
-        plt.show()
+        # plt.title('')
+        # plt.plot(history.history['mae'], label='Training')
+        # plt.plot(history.history['val_mae'], label='Validation')
+        #
+        # plt.legend(loc='best')
+        # plt.xlabel('# Epochs')
+        # plt.ylabel('MAE')
+        # plt.show()
 
         tf.keras.backend.clear_session()
         tf.random.set_seed(51)
@@ -454,6 +454,7 @@ class gapfilling_iab3:
 
             column_names = ['TIMESTAMP']
             for n in n_days_list:
+                self.ET_names.append(f'ET_mdv_{n}')
                 column_names.append(f'ET_mdv_{n}')
                 self._adjacent_days(df=iab3_alldates, n_days=n)
 
@@ -553,7 +554,6 @@ class gapfilling_iab3:
             iab3_df_copy_na = iab3_df_copy.copy()
             iab3_df_copy_na.dropna(subset=['ET'], inplace=True)
 
-
             X = iab3_df_copy_na[column_x]
             y = iab3_df_copy_na['ET']
 
@@ -621,8 +621,17 @@ class gapfilling_iab3:
         # print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['ET_pm'].notna()].describe())
         # print(self.iab3_ET_timestamp[['ET', 'ET_lstm_u']].corr())
 
+    def join_ET(self):
+        self.filled_ET = []
+        for et in self.ET_names:
+            self.filled_ET.append(f'{et}_and_ET')
+            self.iab3_ET_timestamp[f'{et}_and_ET'] = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['ET'].notna(), 'ET']
+            self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[f'{et}_and_ET'].isna(), f'{et}_and_ET'] = self.iab3_ET_timestamp[et]
+
     def plot(self):
-        print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
+        print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
+        print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
+        # print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
