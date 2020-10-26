@@ -233,6 +233,44 @@ class gapfilling_iab3:
         tf.random.set_seed(51)
         return model
 
+    def lstm_conv1d_univariate_model(self, length, generator_train, generator_val, epochs=10):
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(51)
+
+        model = tf.keras.Sequential([
+            tf.keras.layers.Masking(mask_value=0, input_shape=(length, 1)),
+            tf.keras.layers.Conv1D(filters=32, kernel_size=12, strides=1, activation='relu'),
+            tf.keras.layers.LSTM(32, activation='relu'),
+            tf.keras.layers.Dense(1)
+        ])
+
+        model.compile(loss=tf.keras.losses.Huber(), optimizer='adam', metrics=['mae'])
+        history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
+
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(51)
+
+        return model
+
+    def lstm_multivariate_model(self, length, generator_train, generator_val, epochs=10):
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(50)
+
+        model = tf.keras.Sequential([
+            tf.keras.layers.Masking(mask_value=0, input_shape=(length, 8)),
+            tf.keras.layers.LSTM(32, activation='relu', return_sequences=True),
+            tf.keras.layers.LSTM(32, activation='relu'),
+            tf.keras.layers.Dense(1)
+        ])
+
+        model.compile(loss=tf.keras.losses.Huber(), optimizer='adam', metrics=['mae'])
+        history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
+
+        tf.keras.backend.clear_session()
+        tf.random.set_seed(50)
+
+        return model
+
     def mdv_test(self, n_days=5):
         # Dropping bad data
         iab3_df_copy = self.dropping_bad_data()
@@ -432,6 +470,7 @@ class gapfilling_iab3:
     def fill_ET(self, listOfmethods):
         self.iab3_ET_timestamp = self.dropping_bad_data()
         self.ET_names = []
+
         if 'mdv' in listOfmethods:
             print('MDV...')
             n_days_list = [5]
@@ -614,6 +653,90 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=validation_data[['TIMESTAMP','ET_lstm_u']], on='TIMESTAMP', how='outer')
 
             # print(self.iab3_ET_timestamp['ET_lstm_u'].describe())
+
+        if 'lstm_conv1d_u' in listOfmethods:
+            print('LSTM_Conv1D_u...')
+            self.ET_names.append('ET_lstm_conv1d_u')
+
+            length = 12
+            batch_size = 3
+
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
+
+
+            df_date_range = pd.DataFrame({'TIMESTAMP': date_range})
+
+            iab3_alldates = pd.merge(left=df_date_range, right=iab3_df_copy, how='outer')
+            iab3_alldates.loc[iab3_alldates['ET'].isnull(), "ET"] = 0
+
+            train_X, val_X = train_test_split(iab3_alldates['ET'], shuffle=False)
+
+            generator_train = TimeseriesGenerator(train_X, train_X, length=length, batch_size=batch_size)
+            generator_val = TimeseriesGenerator(val_X, val_X, length=length, batch_size=batch_size)
+
+            model = self.lstm_conv1d_univariate_model(length=length,
+                                                      generator_train=generator_train,
+                                                      generator_val=generator_val,
+                                                      epochs=2)
+            lstm_conv1d_forecast = self.lstm_model_forecast(model, iab3_alldates['ET'].to_numpy()[..., np.newaxis], length)
+            lstm_conv1d_forecast = np.insert(lstm_conv1d_forecast, 0, [0 for i in range(length-1)])
+
+            validation_data = pd.DataFrame({'TIMESTAMP': date_range})
+            validation_data['ET_lstm_conv1d_u'] = lstm_forecast
+
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=validation_data[['TIMESTAMP','ET_lstm_conv1d_u']], on='TIMESTAMP', how='outer')
+
+        if 'lstm_m' in listOfmethods:
+            print('LSTM_m...')
+            self.ET_names.append('ET_lstm_m')
+
+            length = 3
+            batch_size = 3
+
+            iab3_df_copy = self.dropping_bad_data()
+            column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'shf_Avg(1)','shf_Avg(2)','e','wind_speed']
+
+            iab3_df_copy.dropna(subset=column_x, inplace=True)
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
+
+
+            df_date_range = pd.DataFrame({'TIMESTAMP': date_range})
+
+            iab3_alldates = pd.merge(left=df_date_range, right=iab3_df_copy, how='outer')
+
+            column_x_n = ['Rn_Avg_n', 'RH_n','VPD_n','air_temperature_n','shf_Avg(1)_n','shf_Avg(2)_n','e_n','wind_speed_n']
+            for i in column_x:
+                iab3_alldates.loc[iab3_alldates[i].isna(), i] = 0
+                iab3_alldates[f'{i}_n'] = preprocessing.scale(iab3_alldates[i])
+
+            # print(iab3_alldates[column_x_n].describe())
+
+            iab3_alldates['ET_shift'] = iab3_alldates['ET'].shift(1)
+            generator_t = TimeseriesGenerator(iab3_alldates[column_x_n].to_numpy(), iab3_alldates['ET_shift'].to_numpy(), length=length, batch_size=3, shuffle=False)
+
+            model = self.lstm_multivariate_model(length=length,
+                                                 generator_train=generator_t,
+                                                 generator_val=generator_t,
+                                                 epochs=2)
+            generator_prediction = TimeseriesGenerator(iab3_alldates[column_x_n].to_numpy(), iab3_alldates['ET_shift'].to_numpy(), length=length, batch_size=len(iab3_alldates[column_x_n]), shuffle=False)
+
+            for i in generator_prediction:
+                forecast = model.predict(i[0])
+            lstm_forecast = np.insert(forecast, 0, [0 for i in range(length)])
+
+            iab3_alldates['ET_lstm_multi_shift'] = lstm_forecast
+            iab3_alldates['ET_lstm_m'] = iab3_alldates['ET_lstm_multi_shift'].shift(-1)
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP','ET_lstm_m']], on='TIMESTAMP', how='outer')
 
 
         print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
