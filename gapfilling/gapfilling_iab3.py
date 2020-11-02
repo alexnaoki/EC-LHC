@@ -697,7 +697,7 @@ class gapfilling_iab3:
             print('LSTM_m...')
             self.ET_names.append('ET_lstm_m')
 
-            length = 3
+            length = 12
             batch_size = 3
 
             iab3_df_copy = self.dropping_bad_data()
@@ -749,12 +749,33 @@ class gapfilling_iab3:
         for et in self.ET_names:
             self.filled_ET.append(f'{et}_and_ET')
             self.iab3_ET_timestamp[f'{et}_and_ET'] = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['ET'].notna(), 'ET']
+            self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[et]<0, et] = 0
             self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[f'{et}_and_ET'].isna(), f'{et}_and_ET'] = self.iab3_ET_timestamp[et]
 
     def plot(self):
         print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
         print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
         # print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
+
+    def stats_ET(self):
+
+
+        fig_01, (ax01, ax02) = plt.subplots(2,1)
+        b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
+        b.resample('D').count()[self.ET_names+['ET']].plot(ax=ax01, figsize=(15,10))
+        # b.resample('D').count()['ET'].plot()
+
+        gaps_et_index = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'TIMESTAMP'].diff().value_counts().sort_index().index
+        gaps_et_index = [str(i) for i in gaps_et_index]
+        gaps_et_count = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'TIMESTAMP'].diff().value_counts().sort_index().values
+
+        gaps_sizes = plt.bar(gaps_et_index, gaps_et_count)
+        plt.xticks(rotation=90)
+        for i, valor in enumerate(gaps_et_count):
+            plt.text(i-0.5, valor+10, str(valor))
+
+
+
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
