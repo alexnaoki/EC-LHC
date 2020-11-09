@@ -213,6 +213,7 @@ class gapfilling_iab3:
 
         model = tf.keras.Sequential([
             tf.keras.layers.Masking(mask_value=0, input_shape=(length, 1)),
+            tf.keras.layers.LSTM(32, activation='relu', return_sequences=True),
             tf.keras.layers.LSTM(32, activation='relu'),
             tf.keras.layers.Dense(1)
         ])
@@ -497,7 +498,8 @@ class gapfilling_iab3:
                 column_names.append(f'ET_mdv_{n}')
                 self._adjacent_days(df=iab3_alldates, n_days=n)
 
-                for i, row in iab3_alldates.loc[iab3_alldates['ET'].isna()].iterrows():
+                # for i, row in iab3_alldates.loc[iab3_alldates['ET'].isna()].iterrows():
+                for i, row in iab3_alldates.iterrows():
                     iab3_alldates.loc[i, f'ET_mdv_{n}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n}']))&
                                                                                  (iab3_alldates['ET'].notna()), 'ET'].mean()
 
@@ -618,8 +620,8 @@ class gapfilling_iab3:
             print('LSTM_u...')
             self.ET_names.append('ET_lstm_u')
 
-            length = 12
-            batch_size = 3
+            length = 24
+            batch_size = 12
 
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
@@ -757,22 +759,38 @@ class gapfilling_iab3:
         print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
         # print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
 
-    def stats_ET(self):
+    def stats_ET(self,stats=[]):
+        if 'gap' in stats:
+            fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(15,100))
+            b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
+            b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(15,30))
+            ax[0].set_ylim((0,48))
+            ax[0].set_title('Count of gaps')
 
+            for j, variable in enumerate(['ET']+self.filled_ET):
+                # print(j, variable)
+                et_diff = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
 
-        fig_01, (ax01, ax02) = plt.subplots(2,1)
-        b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
-        b.resample('D').count()[self.ET_names+['ET']].plot(ax=ax01, figsize=(15,10))
-        # b.resample('D').count()['ET'].plot()
+                gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
+                gaps_et_index = [str(i) for i in gaps_et_index]
+                gaps_et_count = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().values
 
-        gaps_et_index = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'TIMESTAMP'].diff().value_counts().sort_index().index
-        gaps_et_index = [str(i) for i in gaps_et_index]
-        gaps_et_count = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'TIMESTAMP'].diff().value_counts().sort_index().values
+                gaps_sizes = ax[j+1].bar(gaps_et_index, gaps_et_count)
+                # plt.xticks(rotation=90)
+                ax[j+1].set_xticklabels(labels=gaps_et_index,rotation=90)
+                ax[j+1].set_title(f'{variable} GAPS')
+                for i, valor in enumerate(gaps_et_count):
+                    ax[j+1].text(i-0.5, valor+1, str(valor))
 
-        gaps_sizes = plt.bar(gaps_et_index, gaps_et_count)
-        plt.xticks(rotation=90)
-        for i, valor in enumerate(gaps_et_count):
-            plt.text(i-0.5, valor+10, str(valor))
+                # ax[j+1].set_xticklabels([])
+
+            fig_01.tight_layout()
+
+        if 'corr' in stats:
+            corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
+            print(corr)
+
+        # print(self.iab3_ET_timestamp.loc[:, ['TIMESTAMP', 'ET']+self.filled_ET].describe())
 
 
 
