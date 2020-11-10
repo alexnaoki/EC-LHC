@@ -213,7 +213,7 @@ class gapfilling_iab3:
 
         model = tf.keras.Sequential([
             tf.keras.layers.Masking(mask_value=0, input_shape=(length, 1)),
-            tf.keras.layers.LSTM(32, activation='relu', return_sequences=True),
+            tf.keras.layers.LSTM(32, activation='relu', return_sequences=True, dropout=0.4),
             tf.keras.layers.LSTM(32, activation='relu'),
             tf.keras.layers.Dense(1)
         ])
@@ -759,8 +759,30 @@ class gapfilling_iab3:
         print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
         # print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
 
+    def stats_others(self, stats=[], which=[]):
+        iab3_df = self.iab3_df
+        if 'gaps' in stats:
+
+            print(iab3_df.columns)
+
+            print(self.iab1_df.columns)
+
+            print(self.iab2_df_resample.columns)
+
+            fig_01, ax = plt.subplots(2, figsize=(15,10))
+            b = iab3_df.set_index('TIMESTAMP')
+            b.resample('D').count()[['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']].plot(ax=ax[0])
+
+            # b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
+        if 'pm' in stats:
+            b = iab3_df.set_index('TIMESTAMP')
+            b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
+
+
     def stats_ET(self,stats=[]):
-        if 'gap' in stats:
+        if 'gaps' in stats:
+            without_bigGAP = False
+
             fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(15,100))
             b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
             b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(15,30))
@@ -771,9 +793,23 @@ class gapfilling_iab3:
                 # print(j, variable)
                 et_diff = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
 
-                gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
-                gaps_et_index = [str(i) for i in gaps_et_index]
-                gaps_et_count = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().values
+                if without_bigGAP == False:
+                    gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
+                    gap_cumulative = gaps_et_index/pd.Timedelta('00:30:00')-1
+                    gaps_et_index = [str(i) for i in gaps_et_index]
+                    gaps_et_count = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().values
+
+                elif without_bigGAP == True:
+                    gaps_et_index = et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts().sort_index().index
+                    gap_cumulative = gaps_et_index/pd.Timedelta('00:30:00')-1
+                    gaps_et_index = [str(i) for i in gaps_et_index]
+                    gaps_et_count = et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts().sort_index().values
+
+
+
+                ax2 = ax[j+1].twinx()
+
+
 
                 gaps_sizes = ax[j+1].bar(gaps_et_index, gaps_et_count)
                 # plt.xticks(rotation=90)
@@ -781,6 +817,8 @@ class gapfilling_iab3:
                 ax[j+1].set_title(f'{variable} GAPS')
                 for i, valor in enumerate(gaps_et_count):
                     ax[j+1].text(i-0.5, valor+1, str(valor))
+
+                ax2.plot(gaps_et_index, gap_cumulative*gaps_et_count, color='red',linestyle='--')
 
                 # ax[j+1].set_xticklabels([])
 
