@@ -15,12 +15,14 @@ from sklearn import preprocessing
 
 
 class gapfilling_iab3:
-    def __init__(self, ep_path, lf_path, iab2_path, iab1_path):
+    def __init__(self, ep_path, lf_path, iab2_path, iab1_path, footprint_file):
         # File's Path
         self.iab3EP_path = pathlib.Path(ep_path)
         self.iab3LF_path = pathlib.Path(lf_path)
         self.iab2_path = pathlib.Path(iab2_path)
         self.iab1_path = pathlib.Path(iab1_path)
+
+        self.footprint_file = pathlib.Path(footprint_file)
 
         self._read_files()
 
@@ -33,6 +35,9 @@ class gapfilling_iab3:
         self.iab2_files = self.iab2_path.rglob('*.dat')
         self.iab1_files = self.iab1_path.rglob('*Table1*.dat')
 
+        # self.footprint_file = self.footprint_path.rglob('classification_pixel_2018-10-05-00-30to2020-11-04-00-00_pf_80*')
+
+        footprint_columns = ['TIMESTAMP','code03', 'code04', 'code09','code12','code15','code19','code20','code24','code25','code33']
         ep_columns =  ['date','time',  'H', 'qc_H', 'LE', 'qc_LE','sonic_temperature', 'air_temperature', 'air_pressure', 'air_density',
                'ET', 'e', 'es', 'RH', 'VPD','Tdew', 'u_unrot', 'v_unrot', 'w_unrot', 'u_rot', 'v_rot', 'w_rot', 'wind_speed',
                'max_wind_speed', 'wind_dir', 'u*', '(z-d)/L',  'un_H', 'H_scf', 'un_LE', 'LE_scf','u_var', 'v_var', 'w_var', 'ts_var','H_strg','LE_strg']
@@ -44,30 +49,34 @@ class gapfilling_iab3:
         for file in self.iab3EP_files:
             iab3EP_dfs.append(pd.read_csv(file,skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date','time']}, keep_date_col=True, usecols=ep_columns))
         self.iab3EP_df = pd.concat(iab3EP_dfs)
-        print(f'# IAB3_EP: {len(iab3EP_dfs)}')
+        print(f"# IAB3_EP: {len(iab3EP_dfs)}\tInicio: {self.iab3EP_df['TIMESTAMP'].min()}\tFim: {self.iab3EP_df['TIMESTAMP'].max()}")
 
         iab3LF_dfs = []
         print('Reading IAB3_LF files...')
         for file in self.iab3LF_files:
             iab3LF_dfs.append(pd.read_csv(file, skiprows=[0,2,3], na_values=['NAN'], parse_dates=['TIMESTAMP'], usecols=lf_columns))
         self.iab3LF_df = pd.concat(iab3LF_dfs)
-        print(f'# IAB3_LF: {len(iab3LF_dfs)}')
+        print(f"# IAB3_LF: {len(iab3LF_dfs)}\tInicio:{self.iab3LF_df['TIMESTAMP'].min()}\tFim: {self.iab3LF_df['TIMESTAMP'].max()}")
 
         iab2_dfs = []
         print('Reading IAB2 files...')
         for file in self.iab2_files:
             iab2_dfs.append(pd.read_csv(file, skiprows=[0,2,3], na_values=['NAN'], parse_dates=['TIMESTAMP']))
         self.iab2_df = pd.concat(iab2_dfs)
-        print(f'# IAB2: {len(iab2_dfs)}')
+        print(f"# IAB2: {len(iab2_dfs)}\tInicio: {self.iab2_df['TIMESTAMP'].min()}\tFim: {self.iab2_df['TIMESTAMP'].max()}")
 
         iab1_dfs = []
         print('Reading IAB1 files...')
         for file in self.iab1_files:
             iab1_dfs.append(pd.read_csv(file, skiprows=[0,2,3], na_values=['NAN'], parse_dates=['TIMESTAMP']))
         self.iab1_df = pd.concat(iab1_dfs)
-        print(f'# IAB1: {len(iab1_dfs)}')
+        print(f"# IAB1: {len(iab1_dfs)}\tInicio: {self.iab1_df['TIMESTAMP'].min()}\tFim: {self.iab1_df['TIMESTAMP'].max()}")
 
         iab_dfs = [self.iab3EP_df, self.iab3LF_df, self.iab2_df, self.iab1_df]
+
+        print('Reading Footprint file...')
+        self.footprint_df = pd.read_csv(self.footprint_file, parse_dates=['TIMESTAMP'], na_values=-9999, usecols=footprint_columns)
+        print(f"Inicio: {self.footprint_df['TIMESTAMP'].min()}\tFim: {self.footprint_df['TIMESTAMP'].max()}")
 
         # Removing duplicated files based on 'TIMESTAMP'
         for df in iab_dfs:
