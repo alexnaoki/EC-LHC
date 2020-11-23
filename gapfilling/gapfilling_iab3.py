@@ -88,6 +88,9 @@ class gapfilling_iab3:
         # Merging files from EddyPro data and LowFreq data
         self.iab3_df = pd.merge(left=self.iab3EP_df, right=self.iab3LF_df, on='TIMESTAMP', how='inner')
 
+        # Merging EP and LF data with footprint data
+        self.iab3_df = pd.merge(left=self.iab3_df, right=self.footprint_df, on='TIMESTAMP', how='inner')
+
         # Resampling IAB2
         self.iab2_df_resample = self.iab2_df.set_index('TIMESTAMP').resample('30min').mean()
         self.iab2_df_resample.reset_index(inplace=True)
@@ -107,6 +110,13 @@ class gapfilling_iab3:
         self.iab3_df.loc[self.iab3_df['H2O_sig_strgth_mean']>=min_signalStr, 'flag_signalStr'] = 1
         self.iab3_df.loc[self.iab3_df['H2O_sig_strgth_mean']<min_signalStr, 'flag_signalStr'] = 0
 
+        # Flag Footprint
+        self.iab3_df['footprint_acceptance'] = self.iab3_df[['code03', 'code04']].sum(axis=1)/self.iab3_df[['code03','code04','code09','code12','code15','code19','code20','code24','code25','code33']].sum(axis=1)
+        min_footprint = 0.8
+        self.iab3_df.loc[self.iab3_df['footprint_acceptance']>=min_footprint, 'flag_footprint'] = 1
+        self.iab3_df.loc[self.iab3_df['footprint_acceptance']<min_footprint, 'flag_footprint'] = 0
+
+
     def dropping_bad_data(self):
         # Apply filters
         self._applying_filters()
@@ -118,6 +128,11 @@ class gapfilling_iab3:
             (iab3_df_copy['flag_rain']==0)|
             (iab3_df_copy['flag_signalStr']==0)|
             (iab3_df_copy['LE']<0), 'ET'] = np.nan
+
+        use_footprint = True
+        if use_footprint:
+            iab3_df_copy.loc[
+                (iab3_df_copy['flag_footprint']==0), 'ET'] = np.nan
 
         return iab3_df_copy
 
