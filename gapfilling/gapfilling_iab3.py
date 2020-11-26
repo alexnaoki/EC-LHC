@@ -219,6 +219,7 @@ class gapfilling_iab3:
             self.iab12_df.loc[(self.iab12_df['TIMESTAMP'].dt.month==i), 'gc'] = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'gc'].mean()
 
         self.iab12_df['LE_iab12'] = (self.iab12_df['delta']*self.iab12_df['Rn_Avg_MJmh']+3600*self.iab12_df['air_density']*1.013*10**(-3)*self.iab12_df['VPD']*ga)/((self.iab12_df['delta']+self.iab12_df['psychrometric_cte']*(1+ga/self.iab12_df['gc'])))
+        self.iab12_df['ET_iab12'] = self.iab12_df['LE_iab12']/2.45
 
         self.iab12_df['gc_le'] = (self.iab12_df['LE_iab12']*self.iab12_df['psychrometric_cte']*ga)/(self.iab12_df['delta']*(self.iab12_df['LE_iab12']-self.iab12_df['G_Avg_MJmh'])+self.iab12_df['air_density']*3600*1.013*10**(-3)*self.iab12_df['VPD']*ga-self.iab12_df['LE_iab12']*self.iab12_df['delta']-self.iab12_df['LE_iab12']*self.iab12_df['psychrometric_cte'])
         self.iab12_df.loc[(self.iab12_df['gc']>1)|(self.iab12_df['gc']<0), 'gc'] = np.nan
@@ -733,7 +734,7 @@ class gapfilling_iab3:
 
             self.fitting_gagc()
 
-
+            print(self.iab12_df.loc[self.iab12_df['TIMESTAMP'].dt.year>2018,'ET_iab12'].describe())
 
             pm_inputs_iab3 = ['delta', 'Rn_Avg_MJmh', 'shf_Avg_MJmh', 'air_density', 'VPD_kPa', 'ga','LE_MJmh','psychrometric_kPa', 'gc', 'TIMESTAMP']
             pm_inputs_iab3_ET = pm_inputs_iab3 + ['ET']
@@ -755,6 +756,8 @@ class gapfilling_iab3:
 
             ##!!!!!! Talvez colcular o ET com os inputs do iab12 e deixar o gc_le para comparação dos iab12 com iab3
             ## Para alcançar o gc_le (iab12) é preciso utilizar os dados do iab3, para gerar a sazonildade da variavel e ai sim utilizar o ET com os dados das outras estações
+            # print(self.iab12_df)
+            iab3_df_copy = pd.merge(left=iab3_df_copy, right=self.iab12_df.loc[self.iab12_df['TIMESTAMP'].dt.year>2018,['TIMESTAMP','ET_iab12']], on='TIMESTAMP', how='outer')
 
 
             # print(iab3_df_copy[['TIMESTAMP','ga_mes','gc_mes']])
@@ -763,6 +766,10 @@ class gapfilling_iab3:
             # print(self.iab3_df_gagc[['TIMESTAMP','ga', 'gc']])
             # print(iab3_df_copy.loc[iab3_df_copy['ET_pm']>0])
             # print(iab3_df_copy[pm_inputs_iab3+['ET_pm']].describe())
+            # print(iab3_df_copy[['ET_pm', 'ET_iab12']].describe())
+            # print(iab3_df_copy.loc[(iab3_df_copy['ET_pm'].isna())&(iab3_df_copy['TIMESTAMP'].dt.year==2019),['TIMESTAMP','ET_pm','ET_iab12']])
+            iab3_df_copy.loc[iab3_df_copy['ET_pm'].isna(), 'ET_pm'] = iab3_df_copy['ET_iab12']
+            print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020),'ET_pm'].sum())
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
 
@@ -963,6 +970,14 @@ class gapfilling_iab3:
 
 
     def stats_ET(self,stats=[]):
+        if 'sum' in stats:
+            # print(self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique())
+            # print(self.iab3_ET_timestamp[self.ET_names+['ET']])
+            for year in self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique():
+                print(year)
+                print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year),self.filled_ET+['ET']].sum())
+
+
         if 'gaps' in stats:
             without_bigGAP = False
 
