@@ -193,7 +193,7 @@ class gapfilling_iab3:
         # ga = 0.1
 
 
-    def fitting_gagc(self):
+    def fitting_gagc(self, show_graphs=True):
         self._adjusting_input_pm()
 
         # Comparing variables for IAB3 and IAB12
@@ -224,67 +224,33 @@ class gapfilling_iab3:
         self.iab12_df['gc_le'] = (self.iab12_df['LE_iab12']*self.iab12_df['psychrometric_cte']*ga)/(self.iab12_df['delta']*(self.iab12_df['LE_iab12']-self.iab12_df['G_Avg_MJmh'])+self.iab12_df['air_density']*3600*1.013*10**(-3)*self.iab12_df['VPD']*ga-self.iab12_df['LE_iab12']*self.iab12_df['delta']-self.iab12_df['LE_iab12']*self.iab12_df['psychrometric_cte'])
         self.iab12_df.loc[(self.iab12_df['gc']>1)|(self.iab12_df['gc']<0), 'gc'] = np.nan
 
-        # print(self.iab12_df)
-
-
         self.iab12_df.reset_index(inplace=True)
 
         self.iab12_df_gc = self.iab12_df.set_index('TIMESTAMP').resample('1d').mean()[['gc','gc_le']]
         self.iab12_df_gc.reset_index(inplace=True)
 
-        # print(self.iab12_df_gc)
-        # print(self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),['TIMESTAMP', 'gc_le']])
-        # print(self.iab3_df_gagc)
-
-        # self.iab3_df_gagc = pd.merge(left=self.iab3_df_gagc, right=self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),['TIMESTAMP', 'gc_le']], how='outer', on='TIMESTAMP')
-        # print(self.iab3_df_gagc)
 
         print('Mean IAB3 ga: ',self.iab3_df_gagc['ga'].mean())
-
-
-
-        fig, ax = plt.subplots(3, figsize=(15,10))
-
-        ax[1].scatter(self.iab3_df_gagc['TIMESTAMP'], self.iab3_df_gagc['gc'], color='blue')
-        ax[1].scatter(self.iab12_df_gc['TIMESTAMP'], self.iab12_df_gc['gc'], color='red')
-        ax[1].scatter(self.iab12_df_gc['TIMESTAMP'], self.iab12_df_gc['gc_le'], color='purple')
-
-        ax[1].set_yscale('log')
-        ax[1].set_ylim((0.0001,0.1))
-        ax[1].set_title('gc')
-
-        ax[2].scatter(self.iab3_df_gagc['TIMESTAMP'], self.iab3_df_gagc['ga'], color='blue')
-        ax[2].set_title('ga')
-        ax[2].set_yscale('log')
-        ax[2].set_ylim((0.001,1))
 
         meses = np.arange(1,13,1)
         gc_iab3 = []
         gc2 = []
         gc_iab2_le = []
-        ga = []
+        # ga = []
 
         for i in range(1, 13, 1):
             gc_iab3_monthly = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'gc'].mean()
             # gc_iab12_monthly_Rn = self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.month==i)&(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),'gc'].mean()
             gc_iab12_monthly_Le = self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.month==i)&(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),'gc_le'].mean()
 
-            ga_iab3_monthly = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'ga'].mean()
+            # ga_iab3_monthly = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'ga'].mean()
 
             gc_iab3.append(gc_iab3_monthly)
-            # gc2.append(gc_iab12_monthly_Rn)
             gc_iab2_le.append(gc_iab12_monthly_Le)
-
-            ga.append(ga_iab3_monthly)
-
-            ax[0].scatter(i, gc_iab3_monthly, color='blue')
-            # ax[0].scatter(i, gc_iab12_monthly_Rn, color='red')
-            ax[0].scatter(i, gc_iab12_monthly_Le, color='purple')
-
+            # ga.append(ga_iab3_monthly)
 
         gc_iab3 = np.array(gc_iab3)
         gc_iab2_le = np.array(gc_iab2_le)
-        # ga = np.array(ga)
 
         meses02 = meses[~np.isnan(gc_iab3)]
         gc_iab3 = gc_iab3[~np.isnan(gc_iab3)]
@@ -292,31 +258,47 @@ class gapfilling_iab3:
         meses02_gc2_le = meses[~np.isnan(gc_iab2_le)]
         gc_iab2_le = gc_iab2_le[~np.isnan(gc_iab2_le)]
 
-        # meses02_ga = meses[~np.isnan(ga)]
-        # ga02 = ga[~np.isnan(ga)]
-
-        # print(meses02, gc02)
-
         coefs_iab3 = np.poly1d(np.polyfit(meses02, gc_iab3, 2))
         coefs_iab2_le = np.poly1d(np.polyfit(meses02_gc2_le, gc_iab2_le, 2))
 
-        # coefs_ga = np.poly1d(np.polyfit(meses02_ga, ga02, 1))
-        print(coefs_iab3)
-        print(coefs_iab2_le)
-        # print(coefs_ga)
+        print('Equação 2º grau fit IAB3:\n',coefs_iab3)
+        print('Equação 2º grau fit IAB12:\n',coefs_iab2_le)
 
-        # plt.plot(meses, np.polyval(coefs, meses))
+        if show_graphs:
+            fig, ax = plt.subplots(3, figsize=(15,9))
 
-        # ax2.set_yscale('log')
-        ax[0].set_yscale('log')
-        ax[0].plot(meses, coefs_iab3(meses), color='blue', label='gc_iab3')
-        ax[0].plot(meses, coefs_iab2_le(meses), color='purple', label='gc_iab2_le')
-        ax[0].set_title('Monthly gc')
-        ax[0].legend()
+            ax[1].scatter(self.iab3_df_gagc['TIMESTAMP'], self.iab3_df_gagc['gc'], color='blue')
+            # ax[1].scatter(self.iab12_df_gc['TIMESTAMP'], self.iab12_df_gc['gc'], color='red')
+            ax[1].scatter(self.iab12_df_gc['TIMESTAMP'], self.iab12_df_gc['gc_le'], color='purple')
+
+            ax[1].set_yscale('log')
+            ax[1].set_ylim((0.0001,0.1))
+            ax[1].set_title('gc')
+
+            ax[2].scatter(self.iab3_df_gagc['TIMESTAMP'], self.iab3_df_gagc['ga'], color='blue')
+            ax[2].axhline(y=self.iab3_df_gagc['ga'].mean(), color='darkblue')
+            ax[2].set_title('ga')
+            ax[2].set_yscale('log')
+            ax[2].set_ylim((0.001,1))
+
+            for i in range(1, 13, 1):
+                gc_iab3_monthly = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'gc'].mean()
+                # gc_iab12_monthly_Rn = self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.month==i)&(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),'gc'].mean()
+                gc_iab12_monthly_Le = self.iab12_df_gc.loc[(self.iab12_df_gc['TIMESTAMP'].dt.month==i)&(self.iab12_df_gc['TIMESTAMP'].dt.year>2018),'gc_le'].mean()
+
+                ga_iab3_monthly = self.iab3_df_gagc.loc[(self.iab3_df_gagc['TIMESTAMP'].dt.month==i)&(self.iab3_df_gagc['TIMESTAMP'].dt.year>2018), 'ga'].mean()
+                ax[0].scatter(i, gc_iab3_monthly, color='blue')
+                # ax[0].scatter(i, gc_iab12_monthly_Rn, color='red')
+                ax[0].scatter(i, gc_iab12_monthly_Le, color='purple')
+
+            ax[0].set_yscale('log')
+            ax[0].plot(meses, coefs_iab3(meses), color='blue', label='gc_iab3')
+            ax[0].plot(meses, coefs_iab2_le(meses), color='purple', label='gc_iab2_le')
+            ax[0].set_title('Monthly gc')
+            ax[0].legend()
 
         self.iab12_df_gc_monthly = self.iab12_df_gc.set_index('TIMESTAMP').resample('1m').mean()
         self.iab12_df_gc_monthly.reset_index(inplace=True)
-        # print(self.iab12_df_gc_monthly)
         self.iab3_df_gagc = self.iab3_df.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
         self.iab3_df_gagc.reset_index(inplace=True)
 
@@ -732,7 +714,7 @@ class gapfilling_iab3:
             self._adjusting_input_pm()
             self._gagc()
 
-            self.fitting_gagc()
+            self.fitting_gagc(show_graphs=False)
 
             print(self.iab12_df.loc[self.iab12_df['TIMESTAMP'].dt.year>2018,'ET_iab12'].describe())
 
@@ -953,21 +935,24 @@ class gapfilling_iab3:
         iab3_df = self.iab3_df
         if 'gaps' in stats:
 
-            print(iab3_df.columns)
+            # print(iab3_df.columns)
+            #
+            # print(self.iab1_df.columns)
+            #
+            # print(self.iab2_df_resample.columns)
 
-            print(self.iab1_df.columns)
-
-            print(self.iab2_df_resample.columns)
-
-            fig_01, ax = plt.subplots(2, figsize=(15,10))
+            fig_01, ax = plt.subplots(2, figsize=(15,3*len(stats)))
             b = iab3_df.set_index('TIMESTAMP')
             b.resample('D').count()[['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']].plot(ax=ax[0])
+            ax[0].set_title('Gaps in inputs variables')
 
             # b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
         if 'pm' in stats:
             b = iab3_df.set_index('TIMESTAMP')
             b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
+            ax[1].set_title('Gaps in ga and gc')
 
+            self.fitting_gagc(show_graphs=True)
 
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
