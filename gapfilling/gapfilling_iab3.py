@@ -4,7 +4,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import datetime as dt
 import tensorflow as tf
-
+import calendar
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 from sklearn.metrics import mean_absolute_error
@@ -956,18 +956,22 @@ class gapfilling_iab3:
 
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
-            # print(self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique())
-            # print(self.iab3_ET_timestamp[self.ET_names+['ET']])
             for year in self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique():
-                print(year)
+                print('Year: ',year)
                 print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year),self.filled_ET+['ET']].sum())
+                print('Count:')
+                n_timesteps = len(pd.date_range(start=dt.datetime(year,1,1), end=dt.datetime(year+1,1,1),freq='30min'))
+                # print(n_timesteps)
+                percentage_fill = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year),self.filled_ET+['ET']].count()/n_timesteps
+
+                print(percentage_fill)
 
         if 'gaps' in stats:
             without_bigGAP = False
 
-            fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(15,100))
+            fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(10,100))
             b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
-            b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(15,5*len(self.filled_ET)+4))
+            b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(10,5*len(self.filled_ET)+4))
             ax[0].set_ylim((0,50))
             ax[0].set_title('Count of gaps')
 
@@ -976,9 +980,6 @@ class gapfilling_iab3:
 
                 sorted_timestamp = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
                 et_diff = sorted_timestamp.loc[(sorted_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
-                # print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp[f'{variable}'].notna()), 'TIMESTAMP'])
-                # a = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
-                # print(a.loc[a[f'{variable}'].notna(),'TIMESTAMP'].diff().max())
 
                 if without_bigGAP == False:
                     gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
@@ -1007,13 +1008,38 @@ class gapfilling_iab3:
 
             fig_01.tight_layout()
 
+        if 'hourly' in stats:
+            print(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique())
+
+            # print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['TIMESTAMP'].dt.year==2019].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour)[self.filled_ET+['ET']].count())
+            # self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['TIMESTAMP'].dt.year==2019].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour)[self.filled_ET+['ET']].count().plot()
+            fig_01, ax = plt.subplots(len(self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique()), figsize=(10,3*len(self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique())))
+
+            for i, year in enumerate(self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique()):
+                ax[i].set_title(f'Ano {year} - Quantidade de dados por hora no ano')
+                self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour)[self.filled_ET+['ET']].count().plot(ax=ax[i])
+
+                if calendar.isleap(year):
+                    ax[i].set_ylim((0, 732))
+                else:
+                    ax[i].set_ylim((0, 730))
+
+            #     for hour in self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique():
+            #         n_hour = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year)&
+            #                                             (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour==hour), self.filled_ET+['ET']].count()
+            #
+            #         n_hours.append(n_hour)
+                # print(n_hours)
+                # ax[i] = plt.bar(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique(), n_hours)
+                # for hour in range(0, 13, 1):
+                    # print(year, month)
+            fig_01.tight_layout()
+
+
+
         if 'corr' in stats:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
-
-        # print(self.iab3_ET_timestamp.loc[:, ['TIMESTAMP', 'ET']+self.filled_ET].describe())
-
-
 
 
 if __name__ == '__main__':
