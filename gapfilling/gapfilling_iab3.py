@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import datetime as dt
 import tensorflow as tf
 import calendar
+import math
+
+import seaborn as sns
+
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 from sklearn.metrics import mean_absolute_error
@@ -956,15 +960,18 @@ class gapfilling_iab3:
 
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
-            for year in self.iab3_ET_timestamp['TIMESTAMP'].dt.year.unique():
-                print('Year: ',year)
-                print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year),self.filled_ET+['ET']].sum())
-                print('Count:')
-                n_timesteps = len(pd.date_range(start=dt.datetime(year,1,1), end=dt.datetime(year+1,1,1),freq='30min'))
-                # print(n_timesteps)
-                percentage_fill = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year),self.filled_ET+['ET']].count()/n_timesteps
+            fig_01, ax = plt.subplots(3, figsize=(10,8))
 
-                print(percentage_fill)
+            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum().plot.bar(ax=ax[0])
+            ax[0].set_title('ET yearly sum')
+            ax[0].grid(zorder=0)
+
+            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum().plot(ax=ax[1])
+
+            (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/17520).plot.bar(ax=ax[2])
+            ax[2].set_title('Percentage data filled')
+
+            fig_01.tight_layout()
 
         if 'gaps' in stats:
             without_bigGAP = False
@@ -1024,15 +1031,6 @@ class gapfilling_iab3:
                 else:
                     ax[i].set_ylim((0, 730))
 
-            #     for hour in self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique():
-            #         n_hour = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.year==year)&
-            #                                             (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour==hour), self.filled_ET+['ET']].count()
-            #
-            #         n_hours.append(n_hour)
-                # print(n_hours)
-                # ax[i] = plt.bar(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique(), n_hours)
-                # for hour in range(0, 13, 1):
-                    # print(year, month)
             fig_01.tight_layout()
 
 
@@ -1041,6 +1039,17 @@ class gapfilling_iab3:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
 
+            # Talvez fazer uma coluna para diferenciação da hora do dia/ano
+            sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names])
+
+            # columns = 3
+            # rows = math.ceil(len(self.filled_ET)*(len(self.filled_ET)+1)/columns)
+            # fig_01, ax = plt.subplots(rows,columns, figsize=(10, 4*len(self.filled_ET)))
+
+            # ax = ax.ravel()
+
+            # ax[3].scatter(x=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'ET'],
+            #               y=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), self.ET_names[0]])
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
