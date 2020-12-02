@@ -80,6 +80,7 @@ class gapfilling_iab3:
 
         print('Reading Footprint file...')
         self.footprint_df = pd.read_csv(self.footprint_file, parse_dates=['TIMESTAMP'], na_values=-9999, usecols=footprint_columns)
+        self.footprint_df.drop_duplicates(subset='TIMESTAMP', inplace=True)
         print(f"Inicio: {self.footprint_df['TIMESTAMP'].min()}\tFim: {self.footprint_df['TIMESTAMP'].max()}")
 
         # Removing duplicated files based on 'TIMESTAMP'
@@ -758,6 +759,8 @@ class gapfilling_iab3:
             print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020),'ET_pm'].sum())
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
+            self.iab3_ET_timestamp['ET_pm'] = self.iab3_ET_timestamp['ET_pm'].astype(float)
+
 
         if 'dnn' in listOfmethods:
             print('DNN...')
@@ -778,7 +781,7 @@ class gapfilling_iab3:
 
             models = self.dnn_model(train_X=X_scale,val_X=X_scale,
                                     train_y=y, val_y=y,
-                                    learning_rate=[1e-2], epochs=[10], batch_size=[512])
+                                    learning_rate=[1e-2], epochs=[50], batch_size=[512])
 
             X_predict = iab3_df_copy[column_x]
             X_predict = preprocessing.scale(X_predict)
@@ -930,6 +933,12 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[et]<0, et] = 0
             self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[f'{et}_and_ET'].isna(), f'{et}_and_ET'] = self.iab3_ET_timestamp[et]
 
+        # print(self.iab3_ET_timestamp['ET_pm'].dtypes)
+        # print(self.iab3_ET_timestamp['ET_pm'])
+        # print(self.iab3_ET_timestamp['ET_pm'].astype(float))
+
+        # print(self.iab3_ET_timestamp[self.iab3_ET_timestamp['ET_pm'].apply(lambda x: isinstance(x, np.nan))])
+
     def plot(self):
         print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
         print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
@@ -961,7 +970,14 @@ class gapfilling_iab3:
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
             fig_01, ax = plt.subplots(3, figsize=(10,8))
-
+            # print(self.filled_ET)
+            # print(self.iab3_ET_timestamp[self.filled_ET].dtypes)
+            # print(self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[['ET_pm_and_ET']+['ET']].sum())
+            # print(self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)['ET_pm_and_ET'].sum())
+            # print()
+            self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
+            self.iab3_ET_timestamp.reset_index(inplace=True)
+            print(self.iab3_ET_timestamp)
             self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum().plot.bar(ax=ax[0])
             ax[0].set_title('ET yearly sum')
             ax[0].grid(zorder=0)
@@ -983,7 +999,7 @@ class gapfilling_iab3:
             ax[0].set_title('Count of gaps')
 
             for j, variable in enumerate(['ET']+self.filled_ET):
-                print(j, variable)
+                # print(j, variable)
 
                 sorted_timestamp = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
                 et_diff = sorted_timestamp.loc[(sorted_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
@@ -1016,7 +1032,7 @@ class gapfilling_iab3:
             fig_01.tight_layout()
 
         if 'hourly' in stats:
-            print(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique())
+            # print(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique())
 
             # print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['TIMESTAMP'].dt.year==2019].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour)[self.filled_ET+['ET']].count())
             # self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['TIMESTAMP'].dt.year==2019].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour)[self.filled_ET+['ET']].count().plot()
@@ -1039,8 +1055,23 @@ class gapfilling_iab3:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
 
+            print(self.iab3_ET_timestamp.columns)
+
+            self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'daytime'] = 1
+            self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'daytime'] = 0
+
+
+            # print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names])
+
             # Talvez fazer uma coluna para diferenciação da hora do dia/ano
-            sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names])
+            sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','daytime']+self.ET_names],
+                         plot_kws={'alpha': 0.2},
+                         hue='daytime',
+                         # hue='flag_footprint',
+                         corner=True)
+
 
             # columns = 3
             # rows = math.ceil(len(self.filled_ET)*(len(self.filled_ET)+1)/columns)
