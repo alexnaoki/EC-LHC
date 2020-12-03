@@ -121,7 +121,6 @@ class gapfilling_iab3:
         self.iab3_df.loc[self.iab3_df['footprint_acceptance']>=min_footprint, 'flag_footprint'] = 1
         self.iab3_df.loc[self.iab3_df['footprint_acceptance']<min_footprint, 'flag_footprint'] = 0
 
-
     def dropping_bad_data(self):
         # Apply filters
         self._applying_filters()
@@ -197,7 +196,6 @@ class gapfilling_iab3:
         self.iab12_df.loc[(self.iab12_df['gc']>1)|(self.iab12_df['gc']<0), 'gc'] = np.nan
         # ga = 0.1
 
-
     def fitting_gagc(self, show_graphs=True):
         self._adjusting_input_pm()
 
@@ -270,7 +268,7 @@ class gapfilling_iab3:
         print('Equação 2º grau fit IAB12:\n',coefs_iab2_le)
 
         if show_graphs:
-            fig, ax = plt.subplots(3, figsize=(15,9))
+            fig, ax = plt.subplots(3, figsize=(10,9))
 
             ax[1].scatter(self.iab3_df_gagc['TIMESTAMP'], self.iab3_df_gagc['gc'], color='blue')
             # ax[1].scatter(self.iab12_df_gc['TIMESTAMP'], self.iab12_df_gc['gc'], color='red')
@@ -946,26 +944,55 @@ class gapfilling_iab3:
 
     def stats_others(self, stats=[], which=[]):
         iab3_df = self.iab3_df
-        fig_01, ax = plt.subplots(2, figsize=(15,3*len(stats)))
+        # fig_01, ax = plt.subplots(2, figsize=(10,3*len(stats)))
 
         if 'gaps' in stats:
             # print(iab3_df.columns)
             # print(self.iab1_df.columns)
             # print(self.iab2_df_resample.columns)
+            fig_01, ax = plt.subplots(1, figsize=(10,3))
 
             b = iab3_df.set_index('TIMESTAMP')
-            b.resample('D').count()[['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']].plot(ax=ax[0])
-            ax[0].set_title('Gaps in inputs variables')
+            b.resample('D').count()[['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']].plot(ax=ax)
+            ax.set_title('Gaps in inputs variables (IAB3)')
+            fig_01.tight_layout()
 
             # b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
         if 'pm' in stats:
-            b = iab3_df.set_index('TIMESTAMP')
-            b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
-            ax[1].set_title('Gaps in ga and gc (IAB3)')
+            print(self.iab3_df[['TIMESTAMP','ga','gc']])
+            print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
 
-            self.fitting_gagc(show_graphs=True)
+            # for hour in self.iab3_df['TIMESTAMP'].dt.hour.unique():
+            #     print(self.iab3_df.loc[self.iab3_df['TIMESTAMP'].dt.hour==hour, ['TIMESTAMP','ga','gc']].mean())
+            print(self.iab3_df.groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga','gc'].mean())
 
-        fig_01.tight_layout()
+            print(self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2019)&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['TIMESTAMP','gc'].var())
+
+            fig_01, ax = plt.subplots(2, figsize=(10,6))
+
+            self.iab3_df.loc[self.iab3_df['ga']>0].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
+            ax[0].set_yscale('log')
+# .loc[(self.iab3_df['gc']>0)]
+            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2019)&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1])
+            ax[1].set_yscale('log')
+
+            # fig_01, ax = plt.subplots(1, figsize=(10,3))
+            #
+            # b = iab3_df.set_index('TIMESTAMP')
+            # b.resample('D').count()[['ga','gc']].plot(ax=ax)
+            # ax.set_title('Gaps in ga and gc (IAB3)')
+            #
+            # self.fitting_gagc(show_graphs=True)
+            #
+            # fig_01.tight_layout()
 
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
@@ -976,13 +1003,17 @@ class gapfilling_iab3:
             # print(self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)['ET_pm_and_ET'].sum())
             # print()
             self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
-            self.iab3_ET_timestamp.reset_index(inplace=True)
-            print(self.iab3_ET_timestamp)
+            try:
+                self.iab3_ET_timestamp.reset_index(inplace=True)
+            except:
+                pass
+            # print(self.iab3_ET_timestamp)
             self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum().plot.bar(ax=ax[0])
             ax[0].set_title('ET yearly sum')
             ax[0].grid(zorder=0)
 
-            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum().plot(ax=ax[1])
+            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum().set_index(self.iab3_ET_timestamp['TIMESTAMP']).plot(ax=ax[1])
+            ax[1].set_title('Cumulative ET yearly sum in a timeseries')
 
             (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/17520).plot.bar(ax=ax[2])
             ax[2].set_title('Percentage data filled')
@@ -1055,12 +1086,12 @@ class gapfilling_iab3:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
 
-            print(self.iab3_ET_timestamp.columns)
+            # print(self.iab3_ET_timestamp.columns)
 
             self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
-                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'daytime'] = 1
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'daytime'] = True
             self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
-                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'daytime'] = 0
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'daytime'] = False
 
 
             # print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names])
@@ -1069,6 +1100,8 @@ class gapfilling_iab3:
             sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','daytime']+self.ET_names],
                          plot_kws={'alpha': 0.2},
                          hue='daytime',
+                         hue_order=[1,0],
+                         palette=['orange','blue'],
                          # hue='flag_footprint',
                          corner=True)
 
