@@ -959,30 +959,93 @@ class gapfilling_iab3:
 
             # b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
         if 'pm' in stats:
-            print(self.iab3_df[['TIMESTAMP','ga','gc']])
-            print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
+            # print(self.iab3_df[['TIMESTAMP','ga','gc']])
+            # print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
 
             # for hour in self.iab3_df['TIMESTAMP'].dt.hour.unique():
             #     print(self.iab3_df.loc[self.iab3_df['TIMESTAMP'].dt.hour==hour, ['TIMESTAMP','ga','gc']].mean())
-            print(self.iab3_df.groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga','gc'].mean())
+            # print(self.iab3_df.groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga','gc'].mean())
+            #
+            # print(self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2019)&
+            #                  (self.iab3_df['flag_qaqc']==1)&
+            #                  (self.iab3_df['flag_rain']==1)&
+            #                  (self.iab3_df['flag_signalStr']==1)&
+            #                  (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['TIMESTAMP','gc'].var())
+            ano = 2020
+            meses_chuva = [1,2,3,10,11,12]
+            meses_seco = [4,5,6,7,8,9]
 
-            print(self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2019)&
-                             (self.iab3_df['flag_qaqc']==1)&
-                             (self.iab3_df['flag_rain']==1)&
-                             (self.iab3_df['flag_signalStr']==1)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['TIMESTAMP','gc'].var())
+            # footprint = 0.8
+            fig_01, ax = plt.subplots(5, figsize=(12,15))
 
-            fig_01, ax = plt.subplots(2, figsize=(10,6))
-
-            self.iab3_df.loc[self.iab3_df['ga']>0].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
+            # self.iab3_df.loc[self.iab3_df['ga']>0].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
+            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             # (self.iab3_df['flag_qaqc']==1)&
+                             # (self.iab3_df['flag_rain']==1)&
+                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==1)&
+                             (self.iab3_df['ga']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
+            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             # (self.iab3_df['flag_qaqc']==1)&
+                             # (self.iab3_df['flag_rain']==1)&
+                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==0)&
+                             (self.iab3_df['ga']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
             ax[0].set_yscale('log')
+            ax[0].set_title(f'{ano} - ga mean per hour')
 # .loc[(self.iab3_df['gc']>0)]
-            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2019)&
-                             (self.iab3_df['flag_qaqc']==1)&
-                             (self.iab3_df['flag_rain']==1)&
-                             (self.iab3_df['flag_signalStr']==1)&
+
+
+            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             # (self.iab3_df['flag_qaqc']==1)&
+                             # (self.iab3_df['flag_rain']==1)&
+                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==1)&
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1])
+            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             # (self.iab3_df['flag_qaqc']==1)&
+                             # (self.iab3_df['flag_rain']==1)&
+                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==0)&
                              (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1])
             ax[1].set_yscale('log')
+            ax[1].set_title(f'{ano} - gc mean per hour ')
+            ax[1].set_ylim((0.001,0.05))
+
+            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour,y='gc',
+                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                              (self.iab3_df['flag_qaqc']==1)&
+                                              (self.iab3_df['flag_rain']==1)&
+                                              (self.iab3_df['flag_signalStr']==1)&
+                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[2],hue_order=[1,0])
+            ax[2].set_yscale('log')
+            ax[2].set_title(f'{ano} - gc boxplot per hour')
+            ax[2].set_ylim((0.00001,0.1))
+
+            # print(self.iab3_df['TIMESTAMP'].dt.month.isin([1,2,3,8]))
+
+            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
+                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
+                                              (self.iab3_df['flag_qaqc']==1)&
+                                              (self.iab3_df['flag_rain']==1)&
+                                              (self.iab3_df['flag_signalStr']==1)&
+                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[3],hue_order=[1,0])
+            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
+                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
+                                              (self.iab3_df['flag_qaqc']==1)&
+                                              (self.iab3_df['flag_rain']==1)&
+                                              (self.iab3_df['flag_signalStr']==1)&
+                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[4],hue_order=[1,0])
+
+            ax[3].set_yscale('log')
+            ax[4].set_yscale('log')
+            ax[3].set_ylim((0.00001,0.1))
+            ax[4].set_ylim((0.00001,0.1))
+            ax[3].set_title(f'{ano} - gc boxplot {meses_chuva}')
+            ax[4].set_title(f'{ano} - gc boxplot {meses_seco}')
+
 
             # fig_01, ax = plt.subplots(1, figsize=(10,3))
             #
@@ -992,7 +1055,7 @@ class gapfilling_iab3:
             #
             # self.fitting_gagc(show_graphs=True)
             #
-            # fig_01.tight_layout()
+            fig_01.tight_layout()
 
     def stats_ET(self,stats=[]):
         if 'sum' in stats:
