@@ -701,7 +701,7 @@ class gapfilling_iab3:
 
             train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
 
-            et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae', max_depth=2)
+            et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae')
             et_model_RFR.fit(train_X, train_y)
 
             iab3_df_copy.dropna(subset=column_x, inplace=True)
