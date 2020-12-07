@@ -993,24 +993,69 @@ class gapfilling_iab3:
                              (self.iab3_df['ga']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
             ax[0].set_yscale('log')
             ax[0].set_title(f'{ano} - ga mean per hour')
-# .loc[(self.iab3_df['gc']>0)]
+            ax[0].set_xlim((0,23))
 
 
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                             # (self.iab3_df['flag_qaqc']==1)&
-                             # (self.iab3_df['flag_rain']==1)&
-                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==1)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1])
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='blue')
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                             # (self.iab3_df['flag_qaqc']==1)&
-                             # (self.iab3_df['flag_rain']==1)&
-                             # (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==0)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1])
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='orange')
+
+            gc_seco = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                         (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
+                                         (self.iab3_df['flag_qaqc']==1)&
+                                         (self.iab3_df['flag_rain']==1)&
+                                         (self.iab3_df['flag_signalStr']==1)&
+                                         (self.iab3_df['flag_footprint']==1)&
+                                         (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
+            gc_chuva = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==1)&
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
+            ax[1].plot(range(24), gc_seco, linestyle='--', color='lightblue')
+            ax[1].plot(range(24), gc_chuva, linestyle='--', color='darkblue')
+
+            ax[1].fill_between(range(24), gc_seco, gc_chuva, alpha=0.2, color='blue')
+
+            gc_seco_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                         (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
+                                         (self.iab3_df['flag_qaqc']==1)&
+                                         (self.iab3_df['flag_rain']==1)&
+                                         (self.iab3_df['flag_signalStr']==1)&
+                                         (self.iab3_df['flag_footprint']==0)&
+                                         (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
+            gc_chuva_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==0)&
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
+
+            ax[1].plot(range(24), gc_seco_p, linestyle='--', color='yellow')
+            ax[1].plot(range(24), gc_chuva_p, linestyle='--', color='darkorange')
+
+            ax[1].fill_between(range(24), gc_seco_p, gc_chuva_p, alpha=0.2, color='orange')
+
             ax[1].set_yscale('log')
             ax[1].set_title(f'{ano} - gc mean per hour ')
             ax[1].set_ylim((0.001,0.05))
+
+            ax[1].set_xlim((0,23))
+
+
+
 
             sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour,y='gc',
                         data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
