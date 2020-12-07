@@ -947,17 +947,44 @@ class gapfilling_iab3:
         # fig_01, ax = plt.subplots(2, figsize=(10,3*len(stats)))
 
         if 'gaps' in stats:
-            # print(iab3_df.columns)
-            # print(self.iab1_df.columns)
-            # print(self.iab2_df_resample.columns)
-            fig_01, ax = plt.subplots(1, figsize=(10,3))
+            without_bigGAP = True
+
+            columns = ['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']
+
+            fig_01, ax = plt.subplots(len(columns)+1, figsize=(10,4*len(columns)))
 
             b = iab3_df.set_index('TIMESTAMP')
-            b.resample('D').count()[['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']].plot(ax=ax)
-            ax.set_title('Gaps in inputs variables (IAB3)')
+            b.resample('D').count()[columns].plot(ax=ax[0])
+            ax[0].set_title('Gaps in inputs variables (IAB3)')
+
+            for j, variable in enumerate(columns):
+                sorted_timestamp = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
+                variable_diff = sorted_timestamp.loc[(sorted_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
+                if without_bigGAP == False:
+                    gaps_variable_index = variable_diff.loc[variable_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
+                    gap_cumulative = gaps_variable_index/pd.Timedelta('00:30:00')-1
+                    gaps_variable_index = [str(i) for i in gaps_variable_index]
+                    gaps_variable_count = variable_diff.loc[variable_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().values
+
+                elif without_bigGAP == True:
+                    gaps_variable_index = variable_diff.loc[(variable_diff>pd.Timedelta('00:30:00')) & (variable_diff<pd.Timedelta('120 days'))].value_counts().sort_index().index
+                    gap_cumulative = gaps_variable_index/pd.Timedelta('00:30:00')-1
+                    gaps_variable_index = [str(i) for i in gaps_variable_index]
+                    gaps_variable_count = variable_diff.loc[(variable_diff>pd.Timedelta('00:30:00')) & (variable_diff<pd.Timedelta('120 days'))].value_counts().sort_index().values
+
+                ax2 = ax[j+1].twinx()
+
+                gaps_sizes = ax[j+1].bar(gaps_variable_index, gaps_variable_count)
+                # plt.xticks(rotation=90)
+                ax[j+1].set_xticklabels(labels=gaps_variable_index,rotation=90)
+                ax[j+1].set_title(f'{variable} GAPS')
+                for i, valor in enumerate(gaps_variable_count):
+                    ax[j+1].text(i-0.5, valor+1, str(valor))
+
+                ax2.plot(gaps_variable_index, gap_cumulative*gaps_variable_count, color='red',linestyle='--')
+
             fig_01.tight_layout()
 
-            # b.resample('D').count()[['ga','gc']].plot(ax=ax[1])
         if 'pm' in stats:
             # print(self.iab3_df[['TIMESTAMP','ga','gc']])
             # print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
