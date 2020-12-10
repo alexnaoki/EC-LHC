@@ -623,7 +623,7 @@ class gapfilling_iab3:
 
         if 'mdv' in listOfmethods:
             print('MDV...')
-            n_days_list = [5]
+            n_days_list = [3,5]
 
             iab3_df_copy = self.dropping_bad_data()
             iab3_df_copy.dropna(subset=['ET'], inplace=True)
@@ -641,9 +641,12 @@ class gapfilling_iab3:
 
             iab3_alldates = pd.merge(left=iab3_alldates, right=b, on='TIMESTAMP', how='outer')
 
-            column_names = ['TIMESTAMP']
+            self.ET_names.append(f'ET_mdv_{n_days_list}')
+
+            column_names = []
             for n in n_days_list:
-                self.ET_names.append(f'ET_mdv_{n}')
+                print(n)
+                # self.ET_names.append(f'ET_mdv_{n}')
                 column_names.append(f'ET_mdv_{n}')
                 self._adjacent_days(df=iab3_alldates, n_days=n)
 
@@ -652,7 +655,22 @@ class gapfilling_iab3:
                     iab3_alldates.loc[i, f'ET_mdv_{n}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n}']))&
                                                                                  (iab3_alldates['ET'].notna()), 'ET'].mean()
 
-            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[column_names], on='TIMESTAMP', how='outer')
+
+            iab3_alldates[f'ET_mdv_{n_days_list}'] = iab3_alldates[f'ET_mdv_{n_days_list[0]}']
+
+            for n in column_names:
+                print(n)
+                # print(iab3_alldates[n])
+                # print(iab3_alldates.loc[(iab3_alldates[n].notna())&(iab3_alldates[f'ET_mdv_{n_days_list}'].isna())])
+                iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].isna())&
+                                  (iab3_alldates[n].notna()), f'ET_mdv_{n_days_list}'] = iab3_alldates.loc[(iab3_alldates[n].notna())&
+                                                                           (iab3_alldates[f'ET_mdv_{n_days_list}'].isna()), n]
+
+                    # iab3_alldates.loc[i, f'ET_mdv_{n_days_list}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'])]
+            print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']])
+            print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']].describe())
+
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP']+[f'ET_mdv_{n_days_list}']], on='TIMESTAMP', how='outer')
             # print(self.iab3_ET_timestamp)
             # print(iab3_alldates)
                 # iab3_metrics = iab3_alldates[['ET_val_mdv',f'ET_mdv_{n}']].copy()
@@ -758,7 +776,6 @@ class gapfilling_iab3:
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
             self.iab3_ET_timestamp['ET_pm'] = self.iab3_ET_timestamp['ET_pm'].astype(float)
-
 
         if 'dnn' in listOfmethods:
             print('DNN...')
@@ -916,12 +933,7 @@ class gapfilling_iab3:
             iab3_alldates['ET_lstm_m'] = iab3_alldates['ET_lstm_multi_shift'].shift(-1)
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP','ET_lstm_m']], on='TIMESTAMP', how='outer')
 
-
         print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
-        # print(self.iab3_ET_timestamp)
-        # print(self.iab3_ET_timestamp[['ET_lr','ET_pm']].describe())
-        # print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp['ET_pm'].notna()].describe())
-        # print(self.iab3_ET_timestamp[['ET', 'ET_lstm_u']].corr())
 
     def join_ET(self):
         self.filled_ET = []
@@ -1129,7 +1141,7 @@ class gapfilling_iab3:
             #
             fig_01.tight_layout()
 
-    def stats_ET(self,stats=[]):
+    def stats_ET(self, stats=[]):
         if 'sum' in stats:
             fig_01, ax = plt.subplots(3, figsize=(10,8))
             # print(self.filled_ET)
@@ -1215,9 +1227,8 @@ class gapfilling_iab3:
 
             fig_01.tight_layout()
 
-
-
         if 'corr' in stats:
+            # print(self.iab3_ET_timestamp[['ET_rfr','ET_lr']].describe())
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
 
