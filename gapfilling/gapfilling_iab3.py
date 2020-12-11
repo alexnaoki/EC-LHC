@@ -640,8 +640,6 @@ class gapfilling_iab3:
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP', 'ET_baseline']], on='TIMESTAMP', how='outer')
 
-
-
         if 'mdv' in listOfmethods:
             print('MDV...')
             n_days_list = [3,5]
@@ -1262,15 +1260,23 @@ class gapfilling_iab3:
                          # hue='flag_footprint',
                          corner=True)
 
+        if 'corr_baseline' in stats:
+            corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].isna()), self.ET_names].corr()
+            print(corr)
+            print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].isna()), self.ET_names].describe())
 
-            # columns = 3
-            # rows = math.ceil(len(self.filled_ET)*(len(self.filled_ET)+1)/columns)
-            # fig_01, ax = plt.subplots(rows,columns, figsize=(10, 4*len(self.filled_ET)))
+            self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'daytime'] = True
+            self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'daytime'] = False
 
-            # ax = ax.ravel()
-
-            # ax[3].scatter(x=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), 'ET'],
-            #               y=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), self.ET_names[0]])
+            sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].isna()), ['daytime']+self.ET_names],
+                         plot_kws={'alpha': 0.2},
+                         hue='daytime',
+                         hue_order=[1,0],
+                         palette=['orange','blue'],
+                         # hue='flag_footprint',
+                         corner=True)
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
