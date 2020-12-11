@@ -621,6 +621,27 @@ class gapfilling_iab3:
         self.iab3_ET_timestamp = self.dropping_bad_data()
         self.ET_names = []
 
+        if 'baseline' in listOfmethods:
+            print('Baseline...')
+            self.ET_names.append('ET_baseline')
+
+            iab3_df_copy = self.dropping_bad_data()
+            iab3_df_copy.dropna(subset=['ET'], inplace=True)
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
+            df_date_range = pd.DataFrame({'TIMESTAMP':date_range})
+            iab3_alldates = pd.merge(left=df_date_range, right=iab3_df_copy[['TIMESTAMP','ET']], on='TIMESTAMP', how='outer')
+
+            # print(iab3_alldates)
+
+            iab3_alldates['ET_baseline'] = iab3_alldates['ET'].fillna(method='ffill', limit=1)
+
+            self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP', 'ET_baseline']], on='TIMESTAMP', how='outer')
+
+
+
         if 'mdv' in listOfmethods:
             print('MDV...')
             n_days_list = [3,5]
@@ -660,24 +681,14 @@ class gapfilling_iab3:
 
             for n in column_names:
                 print(n)
-                # print(iab3_alldates[n])
-                # print(iab3_alldates.loc[(iab3_alldates[n].notna())&(iab3_alldates[f'ET_mdv_{n_days_list}'].isna())])
                 iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].isna())&
                                   (iab3_alldates[n].notna()), f'ET_mdv_{n_days_list}'] = iab3_alldates.loc[(iab3_alldates[n].notna())&
                                                                            (iab3_alldates[f'ET_mdv_{n_days_list}'].isna()), n]
 
                     # iab3_alldates.loc[i, f'ET_mdv_{n_days_list}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'])]
-            print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']])
-            print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']].describe())
-
+            # print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']])
+            # print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']].describe())
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP']+[f'ET_mdv_{n_days_list}']], on='TIMESTAMP', how='outer')
-            # print(self.iab3_ET_timestamp)
-            # print(iab3_alldates)
-                # iab3_metrics = iab3_alldates[['ET_val_mdv',f'ET_mdv_{n}']].copy()
-                # iab3_metrics.dropna(inplace=True)
-
-                # print(mean_absolute_error(iab3_metrics['ET_val_mdv'], iab3_metrics[f'ET_mdv_{n}']))
-                # print(iab3_metrics.corr())
 
         if 'lr' in listOfmethods:
             print('LR...')
