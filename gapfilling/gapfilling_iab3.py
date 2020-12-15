@@ -90,11 +90,17 @@ class gapfilling_iab3:
             df.reset_index(inplace=True)
             print('Verificacao de Duplicatas: ', df.duplicated().sum())
 
+
         # Merging files from EddyPro data and LowFreq data
         self.iab3_df = pd.merge(left=self.iab3EP_df, right=self.iab3LF_df, on='TIMESTAMP', how='inner')
 
         # Merging EP and LF data with footprint data
         self.iab3_df = pd.merge(left=self.iab3_df, right=self.footprint_df, on='TIMESTAMP', how='inner')
+
+        # print(self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2020)&(self.iab3_df['TIMESTAMP'].dt.month==11),'ET'].describe())
+        # print(self.iab3EP_df.loc[(self.iab3EP_df['TIMESTAMP'].dt.year==2020)&(self.iab3EP_df['TIMESTAMP'].dt.month==11),'ET'].describe())
+        # print(self.iab3LF_df.loc[(self.iab3LF_df['TIMESTAMP'].dt.year==2020)&(self.iab3LF_df['TIMESTAMP'].dt.month==11)].describe())
+
 
         # Resampling IAB2
         self.iab2_df_resample = self.iab2_df.set_index('TIMESTAMP').resample('30min').mean()
@@ -121,22 +127,30 @@ class gapfilling_iab3:
         self.iab3_df.loc[self.iab3_df['footprint_acceptance']>=min_footprint, 'flag_footprint'] = 1
         self.iab3_df.loc[self.iab3_df['footprint_acceptance']<min_footprint, 'flag_footprint'] = 0
 
+        # print(self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==2020)&(self.iab3_df['TIMESTAMP'].dt.month==11),'ET'].describe())
+
     def dropping_bad_data(self):
         # Apply filters
         self._applying_filters()
+        # print('fdas')
 
         # Creating a copy and changing to 'nan' filtered values
         iab3_df_copy = self.iab3_df.copy()
+        # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
+
         iab3_df_copy.loc[
             (iab3_df_copy['flag_qaqc']==0)|
             (iab3_df_copy['flag_rain']==0)|
             (iab3_df_copy['flag_signalStr']==0)|
             (iab3_df_copy['LE']<0), 'ET'] = np.nan
+        # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
 
         use_footprint = True
         if use_footprint:
             iab3_df_copy.loc[
                 (iab3_df_copy['flag_footprint']==0), 'ET'] = np.nan
+
+        # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
 
         return iab3_df_copy
 
@@ -1164,11 +1178,11 @@ class gapfilling_iab3:
             except:
                 pass
             # print(self.iab3_ET_timestamp)
-            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum().plot.bar(ax=ax[0])
+            (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2).plot.bar(ax=ax[0])
             ax[0].set_title('ET yearly sum')
             ax[0].grid(zorder=0)
 
-            self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum().set_index(self.iab3_ET_timestamp['TIMESTAMP']).plot(ax=ax[1])
+            (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum()/2).set_index(self.iab3_ET_timestamp['TIMESTAMP']).plot(ax=ax[1])
             ax[1].set_title('Cumulative ET yearly sum in a timeseries')
 
             (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/17520).plot.bar(ax=ax[2])
@@ -1315,6 +1329,19 @@ class gapfilling_iab3:
 
             fig.tight_layout()
 
+        if 'daynight' in stats:
+            t = self.iab3_ET_timestamp.copy()
+
+            # DIVIDIR POR 2, PQ EM CADA HORA TEM 2 VALORES DE ET (mm/h)
+
+            print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<=18)].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2)
+
+            t.loc[t['flag_rain']==0, self.filled_ET] = 0
+            # print(t.loc[t['flag_rain']==0])
+            print(t.loc[(t['TIMESTAMP'].dt.hour>=6)&(t['TIMESTAMP'].dt.hour<=18)].groupby(t['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2)
+
+            print(t.loc[t['flag_rain']==0, self.filled_ET].count())
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
