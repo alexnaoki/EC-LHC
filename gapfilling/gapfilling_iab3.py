@@ -1177,7 +1177,7 @@ class gapfilling_iab3:
             fig_01.tight_layout()
 
         if 'gaps' in stats:
-            without_bigGAP = False
+            without_bigGAP = True
 
             fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(10,100))
             b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
@@ -1238,6 +1238,15 @@ class gapfilling_iab3:
 
         if 'corr' in stats:
             # print(self.iab3_ET_timestamp[['ET_rfr','ET_lr']].describe())
+            r = 0
+            if 'ET_baseline' in self.ET_names:
+                r = 1
+                # print('base')
+                self.ET_names.remove('ET_baseline')
+                # print(self.ET_names)
+
+            # print(self.ET_names+['ET_baseline'])
+
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names].corr()
             print(corr)
 
@@ -1260,6 +1269,10 @@ class gapfilling_iab3:
                          # hue='flag_footprint',
                          corner=True)
 
+            if r == 1:
+                # print('dafsfsf')
+                self.ET_names = self.ET_names + ['ET_baseline']
+
         if 'corr_baseline' in stats:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].isna()), self.ET_names].corr()
             print(corr)
@@ -1277,6 +1290,31 @@ class gapfilling_iab3:
                          palette=['orange','blue'],
                          # hue='flag_footprint',
                          corner=True)
+
+        if 'heatmap' in stats:
+            self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
+            try:
+                self.iab3_ET_timestamp.reset_index(inplace=True)
+            except:
+                pass
+
+            print(self.ET_names)
+
+            self.iab3_ET_timestamp['date'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.date
+            self.iab3_ET_timestamp['time'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.time
+            # print(self.iab3_ET_timestamp[['date','time','ET']])
+            # print(self.iab3_ET_timestamp.pivot('time','date','ET'))
+
+            fig, ax = plt.subplots(len(self.ET_names)+1,figsize=(20,6*len(self.ET_names)))
+            sns.heatmap(self.iab3_ET_timestamp.pivot('time','date','ET'),fmt='d', ax=ax[0])
+            ax[0].set_title('ET')
+
+            for i, et_name in enumerate(self.ET_names):
+                sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),fmt='d', ax=ax[i+1])
+                ax[i+1].set_title(f'{et_name}')
+
+            fig.tight_layout()
+
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
