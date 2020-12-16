@@ -1285,7 +1285,7 @@ class gapfilling_iab3:
 
             if r == 1:
                 # print('dafsfsf')
-                self.ET_names = self.ET_names + ['ET_baseline']
+                self.ET_names = ['ET_baseline'] + self.ET_names
 
         if 'corr_baseline' in stats:
             corr = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].isna()), self.ET_names].corr()
@@ -1332,6 +1332,10 @@ class gapfilling_iab3:
         if 'daynight' in stats:
             t = self.iab3_ET_timestamp.copy()
 
+
+            print(self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2)
+
+
             # DIVIDIR POR 2, PQ EM CADA HORA TEM 2 VALORES DE ET (mm/h)
 
             print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
@@ -1341,7 +1345,41 @@ class gapfilling_iab3:
             # print(t.loc[t['flag_rain']==0])
             print(t.loc[(t['TIMESTAMP'].dt.hour>=6)&(t['TIMESTAMP'].dt.hour<=18)].groupby(t['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2)
 
-            print(t.loc[t['flag_rain']==0, self.filled_ET].count())
+            # print(t.loc[t['flag_rain']==0, self.filled_ET].count())
+
+        if 'daily' in stats:
+
+            meses_chuva = [1,2,3,10,11,12]
+            meses_seco = [4,5,6,7,8,9]
+
+            # print(self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/48)
+            n_days = self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/48
+
+            et_sum = self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2
+
+            print('ET (mm/day) yearly mean')
+            print(et_sum/n_days)
+
+            n_days_chuva = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_chuva))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/48
+            n_days_seco = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_seco))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/48
+            # print('N DAYS')
+            # print(n_days)
+            # print(n_days_chuva)
+            # print(n_days_seco)
+
+            et_sum_chuva = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_chuva))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2
+            et_sum_seco = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_seco))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2
+
+            print(et_sum_chuva/n_days_chuva)
+            print(et_sum_seco/n_days_seco)
+
+            fig, ax = plt.subplots(3, figsize=(10,9))
+
+            (et_sum/n_days).plot.bar(ax=ax[0])
+            (et_sum_seco/n_days_seco).plot.bar(ax=ax[1])
+            (et_sum_chuva/n_days_chuva).plot.bar(ax=ax[2])
+
+            fig.tight_layout()
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
