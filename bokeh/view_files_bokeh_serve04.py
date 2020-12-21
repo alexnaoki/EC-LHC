@@ -41,7 +41,8 @@ class view_files:
 
     def sidebar_01(self):
         # self.p01 = Div(text=r"""C:\Users\User\Mestrado\Dados_Processados\EddyPro_Fase01""", width=100,style={'font-size': '75%'})
-        self.p01 = Div(text=r"""G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203""", width=100,style={'font-size': '75%'})
+        # self.p01 = Div(text=r"""G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203""", width=100,style={'font-size': '75%'})
+        self.p01 = Div(text=r"""G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase01020304""", width=100,style={'font-size': '75%'})
 
         self.path = TextInput(value='', title='Insert EP Path:')
         self.path.on_change('value', self._textInput_EP)
@@ -49,7 +50,9 @@ class view_files:
         self.select_config = Select(title='Select EP Configs:', value=None, options=[])
         self.select_config.on_change('value', self._select_config_EP)
 
-        self.p02 = Div(text=r"""C:\Users\User\Mestrado\Dados_brutos""", width=100,style={'font-size': '75%'})
+        # self.p02 = Div(text=r"""C:\Users\User\Mestrado\Dados_brutos""", width=100,style={'font-size': '75%'})
+        self.p02 = Div(text=r"""G:\Meu Drive\USP-SHS\Mestrado\Dados_Brutos\IAB3""", width=100,style={'font-size': '75%'})
+
 
         self.path2 = TextInput(value='', title='Insert LF Path:')
         self.path2.on_change('value', self._textInput_LF)
@@ -71,7 +74,8 @@ class view_files:
 
         self.timerangeslider = DateRangeSlider(title='Time', start=dt.datetime(2012,1,1,0,0),end=dt.datetime(2012,1,1,23,30), value=(dt.datetime(2012,1,1,0,0), dt.datetime(2012,1,1,0,30)),step=30*60*1000, format='%H:%M')
 
-        self.html_footprint = Div(text=r'''C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_90.csv C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_80.csv''', width=100,style={'font-size': '75%'})
+        # self.html_footprint = Div(text=r'''C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_90.csv C:\Users\User\Mestrado\Testes\classification_pixel_2018-10-05-00-30to2020-07-15-00-00_pf_80.csv''', width=100,style={'font-size': '75%'})
+        self.html_footprint = Div(text=r'''G:\Meu Drive\USP-SHS\Resultados_processados\Footprint\classification_pixel_2018-10-05-00-30to2020-12-09-00-00_pf_80.csv''', width=100,style={'font-size': '75%'})
 
         self.path_footprint = TextInput(value='', title='Insert Footprint Path')
         self.path_footprint.on_change('value', self._textInput_footprint)
