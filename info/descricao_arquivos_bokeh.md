@@ -3,20 +3,25 @@
 ## Arquivos Principais .py para EC-LHC
 Apesar de haver diversos arquivos .py e .ipynb dentro do [Github](https://github.com/alexnaoki/EC-LHC). Abaixo será listado os mais relevantes.
 
-- [view_files_bokeh_serve01.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_serve01.py)
-- [view_footprint_k15_bokeh_map01.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_footprint_k15_bokeh_map01.py)
+- [view_files_bokeh_serve04.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_serve04.py)
+> Arquivo principal para visualização de toda série de Evapotranspiração, fluxos de calor, radiação, correlação (entre fluxos de calor e radiação). Ainda, QQ-Plot da Evapotranspiração utilizando dados de Footprint.
+
 - [view_footprint_k15_bokeh_map02.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_footprint_k15_bokeh_map02.py)
+> Arquivo principal para visualização do Footprint através do método de Kljun et al. (2015) e criação do dataset com a classificação de cada intervalo de medição (30 minutos).
+
 
 ## Arquivos Secundários .py para EC-LHC
-Esses arquivos secundários foram criados para auxiliar ou aprimorar o conhecimento da ferramenta, ou o entendimento de uma determinada metodologia. Alguns desses arquivos são utilizados no Jupyter Notebook.
+Esses arquivos secundários foram criados para auxiliar ou aprimorar o conhecimento da ferramenta, ou o entendimento de uma determinada metodologia. Alguns desses arquivos são utilizados no Jupyter Notebook e alguns arquivos são versões antigas das versões principais.
 
+- [view_files_bokeh_serve01.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_serve01.py)
 - [view_footprint_k15_bokeh01.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_footprint_k15_bokeh01.py)
 - [view_footprint_k15_bokeh02.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_footprint_k15_bokeh02.py)
+- [view_footprint_k15_bokeh_map01.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_footprint_k15_bokeh_map01.py)
 - [[Notebook] view_files_bokeh_wind_jupyter.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_wind_jupyter.py)
 - [[Notebook] view_files_bokeh_et_jupyter.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_et_jupyter.py)
 - [[Notebook] view_files_bokeh_jupyter.py](https://github.com/alexnaoki/EC-LHC/blob/master/bokeh/view_files_bokeh_jupyter.py)
 
-## Como utilizar os programas que utilizam Bokeh (Python)
+## Como utilizar os programas que utilizam a biblioteca Bokeh (Python)
 Existem dois tipos de arquivos que utilizam o Bokeh:
 
 - Arquivo Python (.py)
@@ -36,11 +41,3 @@ bokeh serve --show [PATH DO ARQUIVO .py]
 ```
 
 Para a utilização de alguns arquivos .py, deve-se atentar para evitar o conflito de diretórios (pacotes). Em suma, evita mexer arquivos individualmente, se for mover um arquivo mova a pasta.
-
-
-### Arquivos .ipynb (Arquivos Python Notebook)
-Primeiramente é necessário abrir o arquivos **.ipynb** através do Jupyter Notebook ou JupyterLab.
-
-Após aberto o Jupyter é necessário verificar se está com "Kernel" correto. Verifica-se o "Kernel" através do canto superior direito. Ainda, recomenda-se utilizar um Ambiente Virtual para utilização (assim como os arquivos .py).
-
-Com o arquivo .ipynb aberto e com o "Kernel" correto basta verificar se a importação se encontra e se encontra corretamente. Em seguida basta iniciar o programa.

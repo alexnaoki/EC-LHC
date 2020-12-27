@@ -2,7 +2,7 @@
 
 Repositório de códigos/programas referente ao **Mestrado em Engenharia Hidráulica e de Saneamento** do **Alex Naoki Asato Kobayashi** pelo Departamento de Engenharia Hidráulica e Saneamento da Escola de Engenharia de São Carlos na Universidade de São Paulo.
 
-Período do Mestrado: **Fevereiro/2019** até **...**.
+Período do Mestrado: **Fevereiro/2019** até **14/04/2021** (Data limite para depósito).
 
 Qualificação aprovado: **03/03/2020** (Banca: Edson Wendland, Rodrigo Porto, Maria Mercedes)
 
@@ -23,7 +23,9 @@ Essa análise de dados processados, por utilizar filtro de análise de contribui
 A análise de contribuição têm 3 partes essenciais: (i) dados processados, (ii) método de Kljun et al. (2015) e (iii) mapa de classificação para aceitação. Os dados processados podem ser gerados com dados de Rotação de coordenadas 2D ou Regressão planar, sendo o segundo o mais adequado. O método de Kjlun et al. (2015) foi considerado o mais adequado por ser um método capaz de considerar a heterogeneidade do campo e um método a qual o código para sua utilização foi disponibilizado pela autora. E o mapa para classificação da vegetação foi utilizando o *MapBiomas* a qual é amplamente utilizado.
 
 ### Análise do preenchimento de falhas
-Descrição da análise do preenchimento de falhas
+O preenchimento de falhas tem como objetivo criar uma série temporal de Evapotranspiração para que seja possível determinar os valores de ET para diferentes períodos do ano em diferentes escalas. As escalas são diário, sazonal e anual.
+
+São utilizados diversas técnicas de preenchimento de falhas e são analisados a partir da correlação e fechamento do balanço energético com os dados presentes no ET e ET_estimado
 
 ## Descrição dos códigos
 
@@ -37,6 +39,9 @@ Para utilização dos arquivos com biblioteca *Bokeh* é necessário seguir algu
 
 Os programas desenvolvidos utilizando *Bokeh* têm como função principal a interatividade e análise dos dados. Dentre as análises estão: análise de área de contribuição com variação de períodos, visualização e análise de dados para o fechamento do balanço energético com a utilização de filtros de *Mauder e Foken (2004)*, filtro de chuva, filtro de força de sinal e filtro de *Footprint*.
 
-### bqplot
-A pasta com bqplot não é mais atualizada
+### Preenchimento de falhas
+O código de preenchimento de falha está no formato *.py*, porém, o *workflow* escolhido para visualização da performance e utilização (em geral) é utilizando um Jupyter Notebook (ou JupyterLab) com *.ipynb*.
+
+### bqplot **(DEPRECIADO)**
+A pasta com bqplot não é mais atualizada.
 > A biblioteca bqplot é interessante, porém, ela possui um performance ruim e serviu para o aprendizado de algumas ferramentas de interação.
