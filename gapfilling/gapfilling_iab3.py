@@ -11,7 +11,7 @@ import seaborn as sns
 
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
@@ -318,6 +318,25 @@ class gapfilling_iab3:
         self.iab12_df_gc_monthly.reset_index(inplace=True)
         self.iab3_df_gagc = self.iab3_df.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
         self.iab3_df_gagc.reset_index(inplace=True)
+
+    @classmethod
+    def MBE(self, y_true, y_pred):
+        '''
+        Parameters:
+            y_true (array): Array of observed values
+            y_pred (array): Array of prediction values
+
+        Returns:
+            mbe (float): Biais score
+        '''
+        # y_true = np.array(y_true)
+        # y_pred = np.array(y_pred)
+        # y_true = y_true.reshape(len(y_true),1)
+        # y_pred = y_pred.reshape(len(y_pred),1)
+        diff = (y_true-y_pred)
+        mbe = diff.mean()
+        # print('MBE = ', mbe)
+        return mbe
 
     def lstm_model_forecast(self, model, series, window_size):
         ds = tf.data.Dataset.from_tensor_slices(series)
@@ -1380,6 +1399,19 @@ class gapfilling_iab3:
             (et_sum_chuva/n_days_chuva).plot.bar(ax=ax[2])
 
             fig.tight_layout()
+
+        if 'error' in stats:
+            for i in self.ET_names:
+                print(i)
+                a = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna())&(self.iab3_ET_timestamp[i].notna())]
+
+                mae = mean_absolute_error(a['ET'], a[i])
+                mbe = self.MBE(a['ET'], a[i])
+                rmse = (mean_squared_error(a['ET'], a[i]))**(1/2)
+
+                print(f'MAE\t: {mae}')
+                print(f'MBE\t: {mbe}')
+                print(f'RMSE\t: {rmse}')
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
