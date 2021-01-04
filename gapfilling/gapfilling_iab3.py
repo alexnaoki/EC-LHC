@@ -1325,6 +1325,9 @@ class gapfilling_iab3:
                          corner=True)
 
         if 'heatmap' in stats:
+            import matplotlib.dates as md
+            plt.rcParams.update({'font.size': 12})
+
             self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
             try:
                 self.iab3_ET_timestamp.reset_index(inplace=True)
@@ -1334,19 +1337,41 @@ class gapfilling_iab3:
             print(self.ET_names)
 
             self.iab3_ET_timestamp['date'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.date
+            # print(self.iab3_ET_timestamp['date'])
+
             self.iab3_ET_timestamp['time'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.time
+
+            # print(pd.to_datetime(self.iab3_ET_timestamp['date']))
             # print(self.iab3_ET_timestamp[['date','time','ET']])
             # print(self.iab3_ET_timestamp.pivot('time','date','ET'))
 
             fig, ax = plt.subplots(len(self.ET_names)+1,figsize=(20,6*len(self.ET_names)))
-            sns.heatmap(self.iab3_ET_timestamp.pivot('time','date','ET'),fmt='d', ax=ax[0])
+            sns.heatmap(self.iab3_ET_timestamp.pivot('time','date','ET'),fmt='d',
+                        cmap='inferno',
+                         xticklabels=30,
+                         # xticklabels=['2019-08-01','2019-09-30'],
+                         ax=ax[0])
             ax[0].set_title('ET')
+            # ax[0].set_xticklabels()
+            # ax[0].xaxis.set_major_locator(md.YearLocator())
+            # ax[0].xaxis.set_major_formatter(md.DateFormatter('%Y-%m-%d'))
+            # ax[0].xaxis.set_minor_locator(md.DayLocator(interval = 1))
+            # ax[0].xaxis.set_major_locator(md.MonthLocator())
+            # ax[0].xaxis.set_minor_locator(md.DayLocator())
+            # ax[0].xaxis.set_major_formatter(md.DateFormatter('%b'))
+            # ax[0].set_major_locator
+
 
             for i, et_name in enumerate(self.ET_names):
-                sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),fmt='d', ax=ax[i+1])
+                sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),
+                            fmt='d',
+                            cmap='inferno',
+                            xticklabels=30,
+                            ax=ax[i+1])
                 ax[i+1].set_title(f'{et_name}')
 
             fig.tight_layout()
+            fig.savefig('heatmap_et.png', dpi=300)
 
         if 'daynight' in stats:
             t = self.iab3_ET_timestamp.copy()
