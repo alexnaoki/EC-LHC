@@ -17,6 +17,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 
+from scipy.stats import f_oneway
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 class gapfilling_iab3:
     def __init__(self, ep_path, lf_path, iab2_path, iab1_path, footprint_file):
@@ -1341,6 +1343,26 @@ class gapfilling_iab3:
                 print(f'MAE\t: {mae}')
                 print(f'MBE\t: {mbe}')
                 print(f'RMSE\t: {rmse}')
+
+        if 'variance' in stats:
+            # print(self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1))
+            print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names), ['ET']+self.ET_names].describe())
+
+            df = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names)]
+
+            f, p = f_oneway(*list(df[f'{i}'].values for i in set(df[['ET']+self.ET_names])))
+
+            print(f)
+            print(p)
+
+            print(np.concatenate(df[['ET']+self.ET_names].values))
+            print(np.tile(['ET']+self.ET_names, len(df)))
+            tukey = pairwise_tukeyhsd(endog=np.concatenate(df[['ET']+self.ET_names].values),
+                                      groups=np.tile(['ET']+self.ET_names, len(df)),
+                                      alpha=0.05)
+            print(tukey)
+
+
 
 if __name__ == '__main__':
     gapfilling_iab3(ep_path=r'G:\Meu Drive\USP-SHS\Resultados_processados\EddyPro_Fase010203',
