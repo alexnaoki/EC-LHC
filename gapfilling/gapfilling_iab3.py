@@ -17,7 +17,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 
-from scipy.stats import f_oneway
+from scipy.stats import f_oneway, shapiro, kstest, kruskal, friedmanchisquare
+from scipy.stats.mstats import kruskalwallis
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 class gapfilling_iab3:
@@ -455,7 +456,6 @@ class gapfilling_iab3:
         tf.random.set_seed(50)
 
         return model
-
 
     def fill_ET(self, listOfmethods):
         self.iab3_ET_timestamp = self.dropping_bad_data()
@@ -1344,6 +1344,17 @@ class gapfilling_iab3:
                 print(f'MBE\t: {mbe}')
                 print(f'RMSE\t: {rmse}')
 
+        if 'normality' in stats:
+            df = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names), ['ET']+self.ET_names]
+            for i in df:
+                print(i)
+                # print(shapiro(df[i]))
+                # print(df[:50, ['ET']])
+                # print(df.loc[:50, 'ET'])
+                print(df.loc[:500,i].describe())
+                print(kstest(df.loc[:500,i], 'norm'))
+
+
         if 'variance' in stats:
             # print(self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1))
             print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names), ['ET']+self.ET_names].describe())
@@ -1362,6 +1373,27 @@ class gapfilling_iab3:
                                       alpha=0.05)
             print(tukey)
 
+        if 'variance_nonNormal' in stats:
+            df = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names)]
+
+
+            df_dia = df.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18)]
+
+            df_noite = df.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18)]
+            # print(df.describe())
+
+            # print(kruskal(*list(df[f'{i}'] for i in set(df[['ET']+self.ET_names]))))
+
+            # print(friedmanchisquare(*list(df[f'{i}'].values for i in set(df[['ET']+self.ET_names]))))
+            # print(friedmanchisquare(df['ET'],df['ET_mdv_[3, 5]'],df['ET_baseline']))
+            for i in self.ET_names:
+                print(i)
+                # print('DIA: ')
+                print('DIA: \t', kruskalwallis(df_dia['ET'].values, df_dia[i].values))
+                print('NOITE: \t', kruskalwallis(df_noite['ET'].values, df_noite[i].values))
+                # print(friedmanchisquare(df['ET'], df[i]))
 
 
 if __name__ == '__main__':
