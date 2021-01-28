@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn import preprocessing
 
-from scipy.stats import f_oneway, shapiro, kstest, kruskal, friedmanchisquare
+from scipy.stats import f_oneway, shapiro, kstest, kruskal, friedmanchisquare, normaltest
 from scipy.stats.mstats import kruskalwallis
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
@@ -945,6 +945,27 @@ class gapfilling_iab3:
 
             fig_01.tight_layout()
 
+        if 'gaps_iab1' in stats:
+            fig_02, ax2 = plt.subplots(1)
+
+            # print(self.iab1_df[['TIMESTAMP','RH']])
+            iab1_data = self.iab1_df.loc[self.iab1_df['TIMESTAMP']>'2018-10-05',['TIMESTAMP', 'RH']].copy()
+            c = iab1_data.set_index('TIMESTAMP')
+            c.resample('D').count()['RH'].plot(ax=ax2)
+
+
+        if 'gaps_iab2' in stats:
+            fig_03, ax3 = plt.subplots(1)
+            columns_iab2 = ['AirTC_Avg','CNR_Wm2_Avg','G_Wm2_Avg']
+            iab2_data = self.iab2_df.loc[self.iab2_df['TIMESTAMP']>'2018-10-05', columns_iab2+['TIMESTAMP']].copy()
+            # print(self.iab2_df)
+            print(iab2_data)
+            d = iab2_data.set_index('TIMESTAMP')
+            d.resample('D').count()[columns_iab2].plot(ax=ax3)
+
+
+
+
         if 'pm' in stats:
             # print(self.iab3_df[['TIMESTAMP','ga','gc']])
             # print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
@@ -1346,13 +1367,18 @@ class gapfilling_iab3:
 
         if 'normality' in stats:
             df = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names), ['ET']+self.ET_names]
+            df_dia = df.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18)]
+
+            df_noite = df.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18)]
             for i in df:
                 print(i)
+                # print(normaltest(df[i]))
+                print('DIA: \t', normaltest(df_dia[i]))
+                print('NOITE: \t', normaltest(df_noite[i]))
                 # print(shapiro(df[i]))
-                # print(df[:50, ['ET']])
-                # print(df.loc[:50, 'ET'])
-                print(df.loc[:500,i].describe())
-                print(kstest(df.loc[:500,i], 'norm'))
+                # print(kstest(df.loc[:500,i], 'norm'))
 
 
         if 'variance' in stats:
