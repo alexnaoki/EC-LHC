@@ -297,11 +297,13 @@ class view_files:
             dfs_single_config.append(pd.read_csv(file, skiprows=[0,2], na_values=-9999, parse_dates={'TIMESTAMP':['date', 'time']},keep_date_col=True, usecols=self.ep_columns_filtered))
 
         self.df_ep = pd.concat(dfs_single_config)
+        self.df_ep.drop_duplicates(subset='TIMESTAMP', inplace=True)
         print('ok')
 
     def _button_plot(self):
         self.dfs_compare = pd.merge(left=self.dfs_concat_02_01, right=self.df_ep, how='outer', on='TIMESTAMP', suffixes=("_lf","_ep"))
 
+        self.dfs_compare.drop_duplicates(subset='TIMESTAMP', inplace=True)
         self.daterangeslider.start = self.dfs_compare['TIMESTAMP'].dt.date.min()
         self.daterangeslider.end = self.dfs_compare['TIMESTAMP'].dt.date.max()
         self.daterangeslider.value = (self.dfs_compare['TIMESTAMP'].dt.date.min(), self.dfs_compare['TIMESTAMP'].dt.date.max())
@@ -348,6 +350,11 @@ class view_files:
             # self.dfs_compare_copy.loc[(self.dfs_compare_copy['H2O_sig_strgth_mean'] <= self.slider_signalStrFilter.value)] = np.nan
         except:
             print('erro')
+            print(self.timerangeslider.value[0])
+            # print(start_date)
+            # print(dt.datetime.utcfromtimestamp(self.daterangeslider.value[0]/1000))
+            # print(dt.datetime.utcfromtimestamp(self.timerangeslider.value[0]/1000))
+
             flag = self.dfs_compare[
                 (self.dfs_compare['H2O_sig_strgth_mean'] >= self.slider_signalStrFilter.value)
             ]
