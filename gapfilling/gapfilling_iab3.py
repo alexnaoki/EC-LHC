@@ -6,7 +6,7 @@ import datetime as dt
 import tensorflow as tf
 import calendar
 import math
-
+import matplotlib.dates as mdates
 import seaborn as sns
 
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
@@ -370,23 +370,27 @@ class gapfilling_iab3:
 
                     model.compile(optimizer=optimizer,
                                   loss=tf.keras.losses.Huber(),
-                                  metrics=['mae'])
+                                  metrics=[tf.keras.metrics.MeanAbsoluteError(),tf.keras.metrics.RootMeanSquaredError()])
                     history = model.fit(x=train_X, y=train_y,
                                         epochs=e, batch_size=b, verbose=0,
                                         validation_data=(val_X, val_y))
-                    last_mae_t = history.history['mae'][-1]
-                    last_mae_v = history.history['val_mae'][-1]
+                    # last_mae_t = history.history['mae'][-1]
+                    # last_mae_v = history.history['val_mae'][-1]
+                    last_mae_v = history.history['val_mean_absolute_error'][-1]
+                    last_rmse_v = history.history['val_root_mean_squared_error'][-1]
+                    print('MAE:\t',history.history['val_mean_absolute_error'][-1])
+                    print('RMSE:\t',history.history['val_root_mean_squared_error'][-1])
 
                     models.append(model)
 
-                    # plt.title(f'Batch_size: {b} | LR: {l:.2f} | MAE_t: {last_mae_t:.4f} | MAE_v: {last_mae_v:.4f}')
-                    # plt.plot(history.history['mae'], label='Training')
-                    # plt.plot(history.history['val_mae'], label='Validation')
+                    # plt.title(f'Batch_size: {b} | LR: {l:.2f} | ')
+                    # plt.plot(history.history['mean_absolute_error'], label='mae')
+                    # plt.plot(history.history['val_mean_absolute_error'], label='Validation')
                     #
                     # plt.legend(loc='best')
                     # plt.xlabel('# Epochs')
                     # plt.ylabel('MAE')
-                    # plt.savefig(r'G:\Meu Drive\USP-SHS\Resultados_processados\Gapfilling\ANN\imgs\dnn\{}-epochs_{}-lr_{}-bs.png'.format(e,l,b))
+                    # # plt.savefig(r'G:\Meu Drive\USP-SHS\Resultados_processados\Gapfilling\ANN\imgs\dnn\{}-epochs_{}-lr_{}-bs.png'.format(e,l,b))
                     # plt.show()
                     tf.keras.backend.clear_session()
                     tf.random.set_seed(51)
@@ -546,8 +550,12 @@ class gapfilling_iab3:
             model = lm.fit(train_X, train_y)
 
             lm_prediction = model.predict(val_X)
+            # print(lm_prediction)
+            print('MAE (validation): \t',mean_absolute_error(val_y, lm_prediction))
+
             iab3_df_copy.dropna(subset=column_x, inplace=True)
-            lm_fill = model.predict(iab3_df_copy[column_x])
+            model_alldata = lm.fit(X, y)
+            lm_fill = model_alldata.predict(iab3_df_copy[column_x])
             iab3_df_copy['ET_lr'] = lm_fill
             # print(iab3_df_copy)
 
@@ -570,6 +578,8 @@ class gapfilling_iab3:
 
             et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae')
             et_model_RFR.fit(train_X, train_y)
+            rfr_validation = et_model_RFR.predict(val_X)
+            print('MAE (validation): \t',mean_absolute_error(val_y, rfr_validation))
 
             iab3_df_copy.dropna(subset=column_x, inplace=True)
             rfr_prediction = et_model_RFR.predict(iab3_df_copy[column_x])
@@ -641,12 +651,17 @@ class gapfilling_iab3:
             y = iab3_df_copy_na['ET']
 
             X_scale = preprocessing.scale(X)
-            # train_X, val_X, train_y, val_y = train_test_split(X_scale, y, random_state=1, shuffle=True)
+            train_X, val_X, train_y, val_y = train_test_split(X_scale, y, random_state=1, shuffle=True)
 
+            print('Validation metrics:')
+            model_val = self.dnn_model(train_X=train_X,val_X=val_X,
+                                    train_y=train_y, val_y=val_y,
+                                    learning_rate=[1e-2], epochs=[50], batch_size=[512])
+            print('All data metrics: ')
             models = self.dnn_model(train_X=X_scale,val_X=X_scale,
                                     train_y=y, val_y=y,
                                     learning_rate=[1e-2], epochs=[50], batch_size=[512])
-
+            #
             X_predict = iab3_df_copy[column_x]
             X_predict = preprocessing.scale(X_predict)
 
@@ -714,13 +729,19 @@ class gapfilling_iab3:
 
             train_X, val_X = train_test_split(iab3_alldates['ET'], shuffle=False)
 
+            generator_all = TimeseriesGenerator(iab3_alldates['ET'], iab3_alldates['ET'], length=length,batch_size=batch_size)
             generator_train = TimeseriesGenerator(train_X, train_X, length=length, batch_size=batch_size)
             generator_val = TimeseriesGenerator(val_X, val_X, length=length, batch_size=batch_size)
             model = self.lstm_univariate_model(length=length,
                                                generator_train=generator_train,
                                                generator_val=generator_val,
-                                               epochs=2)
-            lstm_forecast = self.lstm_model_forecast(model, iab3_alldates['ET'].to_numpy()[..., np.newaxis], length)
+                                               epochs=1)
+
+            model_alldata = self.lstm_univariate_model(length=length,
+                                                       generator_train=generator_all,
+                                                       generator_val=generator_all,
+                                                       epochs=1)
+            lstm_forecast = self.lstm_model_forecast(model_alldata, iab3_alldates['ET'].to_numpy()[..., np.newaxis], length)
             lstm_forecast = np.insert(lstm_forecast, 0, [0 for i in range(length-1)])
 
             # validation_data = pd.DataFrame({'TIMESTAMP': date_range})
@@ -906,16 +927,29 @@ class gapfilling_iab3:
         iab3_df = self.iab3_df
         # fig_01, ax = plt.subplots(2, figsize=(10,3*len(stats)))
 
-        if 'gaps' in stats:
+        if 'gaps_iab3' in stats:
             without_bigGAP = True
 
             columns = ['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']
+            fig_00, ax0 = plt.subplots(1, figsize=(10,4), dpi=300)
 
-            fig_01, ax = plt.subplots(len(columns)+1, figsize=(10,4*len(columns)))
 
             b = iab3_df.set_index('TIMESTAMP')
-            b.resample('D').count()[columns].plot(ax=ax[0])
-            ax[0].set_title('Gaps in inputs variables (IAB3)')
+            b.resample('D').count()[columns[0]].plot(ax=ax0, linestyle='dashdot',label='Radiação líquida')
+            b.resample('D').count()[columns[1]].plot(ax=ax0, linestyle='solid',label='Umidade relativa')
+            b.resample('D').count()[columns[2]].plot(ax=ax0, linestyle='dashed',label='Deficit de vapor de pressão')
+            b.resample('D').count()[columns[3]].plot(ax=ax0, linestyle='dotted',label='Fluxo de calor do solo')
+            # b.resample('D').count()[columns[4]].plot(ax=ax0, linestyle='dotted', label='Fluxo de calor do solo (sensor 2)')
+
+            # ax0.set_title('Gaps in inputs variables (IAB3)')
+            ax0.set_ylabel('Quantidade de dados diário')
+            ax0.set_xlabel('Data')
+
+            ax0.set_ylim((-1,50))
+            ax0.legend(loc='lower left')
+            plt.rc('axes', labelsize=14)
+
+            fig_01, ax = plt.subplots(len(columns), figsize=(10,4*len(columns)+4))
 
             for j, variable in enumerate(columns):
                 sorted_timestamp = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
@@ -932,36 +966,53 @@ class gapfilling_iab3:
                     gaps_variable_index = [str(i) for i in gaps_variable_index]
                     gaps_variable_count = variable_diff.loc[(variable_diff>pd.Timedelta('00:30:00')) & (variable_diff<pd.Timedelta('120 days'))].value_counts().sort_index().values
 
-                ax2 = ax[j+1].twinx()
+                ax2 = ax[j].twinx()
 
-                gaps_sizes = ax[j+1].bar(gaps_variable_index, gaps_variable_count)
+                gaps_sizes = ax[j].bar(gaps_variable_index, gaps_variable_count)
                 # plt.xticks(rotation=90)
-                ax[j+1].set_xticklabels(labels=gaps_variable_index,rotation=90)
-                ax[j+1].set_title(f'{variable} GAPS')
+                ax[j].set_xticklabels(labels=gaps_variable_index,rotation=90)
+                ax[j].set_title(f'{variable} GAPS')
                 for i, valor in enumerate(gaps_variable_count):
-                    ax[j+1].text(i-0.5, valor+1, str(valor))
+                    ax[j].text(i-0.5, valor+1, str(valor))
 
                 ax2.plot(gaps_variable_index, gap_cumulative*gaps_variable_count, color='red',linestyle='--')
 
             fig_01.tight_layout()
 
         if 'gaps_iab1' in stats:
-            fig_02, ax2 = plt.subplots(1)
+            fig_02, ax2 = plt.subplots(1, figsize=(10,4), dpi=300)
 
             # print(self.iab1_df[['TIMESTAMP','RH']])
             iab1_data = self.iab1_df.loc[self.iab1_df['TIMESTAMP']>'2018-10-05',['TIMESTAMP', 'RH']].copy()
             c = iab1_data.set_index('TIMESTAMP')
-            c.resample('D').count()['RH'].plot(ax=ax2)
+            c.resample('D').count()['RH'].plot(ax=ax2, label='Umidade relativa')
+            ax2.set_ylim((-1,150))
+            # ax2.legend(['dfasdf'])
+            ax2.set_ylabel('Quantidade de dados diário')
+            ax2.set_xlabel('Data')
+            # ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+            ax2.legend()
+            plt.rc('axes', labelsize=14)
 
 
         if 'gaps_iab2' in stats:
-            fig_03, ax3 = plt.subplots(1)
+            fig_03, ax3 = plt.subplots(1, figsize=(10,4), dpi=300)
             columns_iab2 = ['AirTC_Avg','CNR_Wm2_Avg','G_Wm2_Avg']
             iab2_data = self.iab2_df.loc[self.iab2_df['TIMESTAMP']>'2018-10-05', columns_iab2+['TIMESTAMP']].copy()
             # print(self.iab2_df)
-            print(iab2_data)
+            # print(iab2_data)
             d = iab2_data.set_index('TIMESTAMP')
-            d.resample('D').count()[columns_iab2].plot(ax=ax3)
+            d.resample('D').count()[columns_iab2[0]].plot(ax=ax3, linestyle='solid',label='Temperatura do ar')
+            d.resample('D').count()[columns_iab2[1]].plot(ax=ax3,linestyle='dashed',label='Radiação líquida')
+            d.resample('D').count()[columns_iab2[2]].plot(ax=ax3, linestyle='dotted',label='Fluxo de calor do solo')
+
+
+            ax3.set_ylim((-1,150))
+            ax3.set_ylabel('Quantidade de dados diário')
+            ax3.set_xlabel('Data')
+
+            ax3.legend()
+            plt.rc('axes', labelsize=14)
 
 
 
