@@ -469,7 +469,7 @@ class gapfilling_iab3:
         self.ET_names = []
 
         if 'baseline' in listOfmethods:
-            print('Baseline...')
+            print('#####\t Baseline \t#####')
             self.ET_names.append('ET_baseline')
 
             iab3_df_copy = self.dropping_bad_data()
@@ -536,7 +536,7 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP']+[f'ET_mdv_{n_days_list}']], on='TIMESTAMP', how='outer')
 
         if 'lr' in listOfmethods:
-            print('LR...')
+            print('#####\t LR \t#####')
             self.ET_names.append('ET_lr')
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
@@ -591,7 +591,7 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
 
         if 'pm' in listOfmethods:
-            print('PM...')
+            print('#####\t PM \t#####')
             self.ET_names.append('ET_pm')
 
             self._adjusting_input_pm()
@@ -640,7 +640,7 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp['ET_pm'] = self.iab3_ET_timestamp['ET_pm'].astype(float)
 
         if 'dnn' in listOfmethods:
-            print('DNN...')
+            print('#####\t DNN \t#####')
             self.ET_names.append('ET_dnn')
 
             iab3_df_copy = self.dropping_bad_data()
@@ -868,7 +868,7 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP','ET_lstm_m']], on='TIMESTAMP', how='outer')
 
         if 'lstm_m_v2' in listOfmethods:
-            print('lstm_m_v2...')
+            print('#####\t LSTM_M_v2 \t#####')
             self.ET_names.append('ET_lstm_m_v2')
 
             length = 8
@@ -1473,10 +1473,11 @@ class gapfilling_iab3:
             fig.tight_layout()
 
         if 'error' in stats:
+            print()
             for i in self.ET_names:
                 print(i)
                 a = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna())&(self.iab3_ET_timestamp[i].notna())]
-
+                print(a[['ET',f'{i}']].describe())
                 mae = mean_absolute_error(a['ET'], a[i])
                 mbe = self.MBE(a['ET'], a[i])
                 rmse = (mean_squared_error(a['ET'], a[i]))**(1/2)
