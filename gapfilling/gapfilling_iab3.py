@@ -457,7 +457,7 @@ class gapfilling_iab3:
         ])
 
         model.compile(loss=tf.keras.losses.Huber(), optimizer='adam', metrics=['mae'])
-        history = model.fit(generator_train, epochs=epochs, validation_data=generator_train)
+        history = model.fit(generator_train, epochs=epochs, validation_data=generator_train, verbose=0)
 
         tf.keras.backend.clear_session()
         tf.random.set_seed(50)
@@ -554,23 +554,34 @@ class gapfilling_iab3:
 
             lm_prediction = model.predict(val_X)
             # print(lm_prediction)
-            print('MAE (validation): \t',mean_absolute_error(val_y, lm_prediction))
+            print('Validation metrics:')
+            print('MAE: \t',mean_absolute_error(val_y, lm_prediction))
+            print('RMSE: \t', mean_squared_error(val_y, lm_prediction)**(1/2))
 
+
+            print('All data metrics:')
             iab3_df_copy.dropna(subset=column_x, inplace=True)
             model_alldata = lm.fit(X, y)
             lm_fill = model_alldata.predict(iab3_df_copy[column_x])
             iab3_df_copy['ET_lr'] = lm_fill
+            iab3_df_copy.loc[iab3_df_copy['ET_lr']<0, 'ET_lr'] = 0
+
+            iab3_df_notna = iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_lr'].notna())]
             # print(iab3_df_copy)
+            print('MAE: \t', mean_absolute_error(iab3_df_notna['ET'], iab3_df_notna['ET_lr']))
+            print('RMSE: \t', mean_squared_error(iab3_df_notna['ET'], iab3_df_notna['ET_lr']))
+            # print(iab3_df_copy[['ET','ET_lr']])
+            # print(iab3_df_notna.loc[(iab3_df_notna['ET'].notna())&(iab3_df_notna['ET_lr'].notna()),['ET', 'ET_lr']].describe())
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_lr']], on='TIMESTAMP', how='outer')
 
         if 'rfr' in listOfmethods:
-            print('RFR...')
+            print('#####\t RFR \t#####')
             self.ET_names.append('ET_rfr')
 
             iab3_df_copy = self.dropping_bad_data()
             column_x = ['Rn_Avg', 'RH', 'VPD','air_temperature', 'air_pressure','shf_Avg(1)','shf_Avg(2)','e','wind_speed']
-            column_x_ET = column_x + ['ET']
+            column_x_ET = column_x + ['ET'] + ['TIMESTAMP']
             iab3_df_copy_na = iab3_df_copy.copy()
             iab3_df_copy_na.dropna(subset=column_x_ET, inplace=True)
 
@@ -579,15 +590,28 @@ class gapfilling_iab3:
 
             train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
 
+            print('Validation metrics:')
             et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae')
             et_model_RFR.fit(train_X, train_y)
             rfr_validation = et_model_RFR.predict(val_X)
-            print('MAE (validation): \t',mean_absolute_error(val_y, rfr_validation))
+            print('MAE: \t',mean_absolute_error(val_y, rfr_validation))
+            print('RMSE: \t', mean_squared_error(val_y, rfr_validation))
 
+            print('All data metrics:')
+
+
+
+
+            # iab3_df_copy_na['ET_rfr'] = rfr_alldata
             iab3_df_copy.dropna(subset=column_x, inplace=True)
-            rfr_prediction = et_model_RFR.predict(iab3_df_copy[column_x])
-            iab3_df_copy['ET_rfr'] = rfr_prediction
-
+            et_model_RFR_all = RandomForestRegressor(random_state=1, criterion='mae')
+            et_model_RFR_all.fit(iab3_df_copy_na[column_x], iab3_df_copy_na['ET'])
+            rfr_alldata = et_model_RFR_all.predict(iab3_df_copy[column_x])
+            # rfr_prediction = et_model_RFR.predict(iab3_df_copy[column_x])
+            iab3_df_copy['ET_rfr'] = rfr_alldata
+            iab3_df_copy.loc[iab3_df_copy['ET_rfr']<0, 'ET_rfr'] = 0
+            print('MAE: \t', mean_absolute_error(iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET'], iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET_rfr']))
+            print('RMSE: \t', mean_squared_error(iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET'], iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET_rfr'])**(1/2))
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
 
         if 'pm' in listOfmethods:
@@ -671,6 +695,7 @@ class gapfilling_iab3:
             y_predict = models[0].predict(X_predict)
 
             iab3_df_copy['ET_dnn'] = y_predict
+            iab3_df_copy.loc[iab3_df_copy['ET_dnn']<0, 'ET_dnn'] = 0
 
             # print(iab3_df_copy['ET_dnn'].describe())
             # print(models[0].predict(X_predict))
@@ -961,6 +986,7 @@ class gapfilling_iab3:
             lstm_forecast = np.insert(forecast, 0, [0 for i in range(length)])
 
             iab3_alldates['ET_lstm_multi_shift'] = lstm_forecast
+            iab3_alldates.loc[iab3_alldates['ET_lstm_multi_shift']<0, 'ET_lstm_multi_shift'] = 0
             df_all_notna = pd.DataFrame({'ET_shift':iab3_alldates['ET_shift'], 'lstm_forecast_all':lstm_forecast})
             df_all_notna = df_all_notna.loc[(df_all_notna['ET_shift'].notna())&(df_all_notna['lstm_forecast_all'].notna())]
             print('MAE: \t', mean_absolute_error(df_all_notna['ET_shift'], df_all_notna['lstm_forecast_all']))
@@ -971,7 +997,12 @@ class gapfilling_iab3:
 
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP','ET_lstm_m_v2']], on='TIMESTAMP', how='outer')
 
-        print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
+
+        for i in self.ET_names:
+            self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[i]<0, i] = 0
+            # print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna())&(self.iab3_ET_timestamp[i].notna()), ['ET']+[i]].describe())
+
+        # print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
 
     def join_ET(self):
         self.filled_ET = []
