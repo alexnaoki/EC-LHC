@@ -488,8 +488,8 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP', 'ET_baseline']], on='TIMESTAMP', how='outer')
 
         if 'mdv' in listOfmethods:
-            print('MDV...')
-            n_days_list = [3,5]
+            print('#####\t MDV \t#####')
+            n_days_list = [3,5, 7]
 
             iab3_df_copy = self.dropping_bad_data()
             iab3_df_copy.dropna(subset=['ET'], inplace=True)
