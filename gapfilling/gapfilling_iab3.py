@@ -146,12 +146,23 @@ class gapfilling_iab3:
             (iab3_df_copy['flag_rain']==0)|
             (iab3_df_copy['flag_signalStr']==0)|
             (iab3_df_copy['LE']<0), 'ET'] = np.nan
+
+        iab3_df_copy.loc[
+            (iab3_df_copy['flag_qaqc']==0)|
+            (iab3_df_copy['flag_rain']==0)|
+            (iab3_df_copy['flag_signalStr']==0)|
+            (iab3_df_copy['LE']<0), 'LE'] = np.nan
+
+
+
         # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
 
         use_footprint = True
         if use_footprint:
             iab3_df_copy.loc[
                 (iab3_df_copy['flag_footprint']==0), 'ET'] = np.nan
+            iab3_df_copy.loc[
+                (iab3_df_copy['flag_footprint']==0), 'LE'] = np.nan
 
         # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
 
@@ -163,6 +174,11 @@ class gapfilling_iab3:
         df[f'timestamp_adj_{n_days}'] = df['TIMESTAMP'].apply(lambda x: [x + dt.timedelta(days=i) for i in delta_days])
 
     def _gagc(self):
+        self.iab3_df.loc[(self.iab3_df['flag_qaqc']==0)|
+                               (self.iab3_df['flag_rain']==0)|
+                               (self.iab3_df['flag_signalStr']==0)|
+                               (self.iab3_df['flag_footprint']==0), 'LE'] = np.nan
+
         self.iab3_df['psychrometric_kPa'] = 0.665*10**(-3)*self.iab3_df['air_pressure']/1000
         self.iab3_df['delta'] = 4098*(0.6108*np.e**(17.27*(self.iab3_df['air_temperature']-273.15)/((self.iab3_df['air_temperature']-273.15)+237.3)))/((self.iab3_df['air_temperature']-273.15)+237.3)**2
         self.iab3_df['VPD_kPa'] = (self.iab3_df['es']-self.iab3_df['e'])/1000
@@ -177,6 +193,23 @@ class gapfilling_iab3:
         self.iab3_df_gagc = self.iab3_df.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
         self.iab3_df_gagc.reset_index(inplace=True)
         # print(self.iab3_df_gagc)
+
+    def _gagc_2(self):
+        self._gagc()
+        pm_inputs_iab3 = ['delta', 'Rn_Avg_MJmh', 'shf_Avg_MJmh', 'air_density', 'VPD_kPa', 'ga','LE_MJmh','psychrometric_kPa', 'gc', 'TIMESTAMP']
+        pm_inputs_iab3_ET = pm_inputs_iab3 + ['ET']
+        iab3_df_copy = self.dropping_bad_data()
+        iab3_df_copy.dropna(subset=pm_inputs_iab3_ET, inplace=True)
+
+        train, val = train_test_split(iab3_df_copy, shuffle=True)
+
+        self.iab3_df_gagc_2 = train.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
+        self.iab3_df_gagc_2.reset_index(inplace=True)
+
+        # print(train[['ga','gc']].describe())
+        # print(val[['ga','gc']].describe())
+        # print(train)
+        # print(val)
 
     def _adjusting_input_pm(self):
         # self.iab2_df_resample['delta'] = 4098*(0.6108*np.e**(17.27*self.iab2_df_resample['AirTC_Avg']/(self.iab2_df_resample['AirTC_Avg']+237.3)))/(self.iab2_df_resample['AirTC_Avg']+237.3)**2
@@ -337,6 +370,7 @@ class gapfilling_iab3:
         # y_true = y_true.reshape(len(y_true),1)
         # y_pred = y_pred.reshape(len(y_pred),1)
         diff = (y_true-y_pred)
+        # print(len(y_true), len(y_pred))
         mbe = diff.mean()
         # print('MBE = ', mbe)
         return mbe
@@ -535,6 +569,97 @@ class gapfilling_iab3:
             # print(iab3_alldates[['TIMESTAMP',f'ET_mdv_{n_days_list}',f'ET_mdv_{n_days_list[0]}',f'ET_mdv_{n_days_list[1]}']].describe())
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_alldates[['TIMESTAMP']+[f'ET_mdv_{n_days_list}']], on='TIMESTAMP', how='outer')
 
+        if 'mdv2' in listOfmethods:
+            n_days_list = [3,5,7]
+
+            # self.ET_names.append(f'ET_mdv2_{n_days_list}')
+            print('#####\t MDV2 \t#####')
+
+            iab3_df_copy = self.dropping_bad_data()
+            iab3_df_copy.dropna(subset=['ET'], inplace=True)
+
+            a, b = train_test_split(iab3_df_copy[['TIMESTAMP', 'ET']])
+            b.rename(columns={"ET":'ET_val_mdv'}, inplace=True)
+
+            date_range = pd.date_range(start=iab3_df_copy['TIMESTAMP'].min(),
+                                       end=iab3_df_copy['TIMESTAMP'].max(),
+                                       freq='30min')
+            df_date_range = pd.DataFrame({'TIMESTAMP':date_range})
+            iab3_alldates = pd.merge(left=df_date_range, right=a, on='TIMESTAMP', how='outer')
+            iab3_alldates = pd.merge(left=iab3_alldates, right=b, on='TIMESTAMP', how='outer')
+            # print(iab3_alldates.loc[['ET_val_mdv']])
+            column_names = []
+            for n in n_days_list:
+                print(n)
+                column_names.append(f'ET_mdv_{n}')
+                self._adjacent_days(df=iab3_alldates, n_days=n)
+
+                for i, row in iab3_alldates.iterrows():
+                    iab3_alldates.loc[i, f'ET_mdv_{n}'] = iab3_alldates.loc[(iab3_alldates['TIMESTAMP'].isin(row[f'timestamp_adj_{n}']))&
+                                                                                 (iab3_alldates['ET'].notna()), 'ET'].mean()
+            iab3_alldates[f'ET_mdv_{n_days_list}'] = iab3_alldates[f'ET_mdv_{n_days_list[0]}']
+
+            # print(iab3_alldates)
+            for n in column_names:
+                print(n)
+                iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].isna())&
+                                  (iab3_alldates[n].notna()), f'ET_mdv_{n_days_list}'] = iab3_alldates.loc[(iab3_alldates[n].notna())&
+                                                                           (iab3_alldates[f'ET_mdv_{n_days_list}'].isna()), n]
+
+
+            print('Validation metrics:')
+            # print(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}']).notna()&(iab3_alldates['ET_val_mdv'].notna()), ['ET_val_mdv',f'ET_mdv_{n_days_list}']])
+            print('MAE: \t',mean_absolute_error(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), 'ET_val_mdv'],
+                  iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), f'ET_mdv_{n_days_list}']))
+            print('RMSE: \t', mean_squared_error(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), 'ET_val_mdv'],
+                  iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), f'ET_mdv_{n_days_list}'])**(1/2))
+            print('MBE: \t', self.MBE(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), 'ET_val_mdv'].values,
+                  iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), f'ET_mdv_{n_days_list}'].values))
+
+
+            val_df = pd.DataFrame({'y_predict': iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), f'ET_mdv_{n_days_list}'].values,
+                                   'val_y':iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), 'ET_val_mdv'].values,
+                                  'TIMESTAMP':iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&(iab3_alldates['ET_val_mdv'].notna()), 'TIMESTAMP'].values})
+            print(val_df)
+            print(val_df[['y_predict','val_y']].corr()['y_predict'][1])
+
+            print('MAE (daytime):',mean_absolute_error(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                                                          (iab3_alldates['ET_val_mdv'].notna())&
+                                                                          (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                                                          (iab3_alldates['TIMESTAMP'].dt.hour<18), 'ET_val_mdv'],
+                  iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                     (iab3_alldates['ET_val_mdv'].notna())&
+                                     (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                     (iab3_alldates['TIMESTAMP'].dt.hour<18), f'ET_mdv_{n_days_list}']))
+            print('RMSE (daytime): \t', mean_squared_error(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                                                   (iab3_alldates['ET_val_mdv'].notna())&
+                                                                   (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                                                   (iab3_alldates['TIMESTAMP'].dt.hour<18), 'ET_val_mdv'],
+                                                 iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                                                   (iab3_alldates['ET_val_mdv'].notna())&
+                                                                   (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                                                   (iab3_alldates['TIMESTAMP'].dt.hour<18), f'ET_mdv_{n_days_list}'])**(1/2))
+            print('MBE (daytime): \t', self.MBE(iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                                        (iab3_alldates['ET_val_mdv'].notna())&
+                                                        (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                                        (iab3_alldates['TIMESTAMP'].dt.hour<18), 'ET_val_mdv'].values,
+                                      iab3_alldates.loc[(iab3_alldates[f'ET_mdv_{n_days_list}'].notna())&
+                                                        (iab3_alldates['ET_val_mdv'].notna())&
+                                                        (iab3_alldates['TIMESTAMP'].dt.hour>=6)&
+                                                        (iab3_alldates['TIMESTAMP'].dt.hour<18), f'ET_mdv_{n_days_list}'].values))
+            print(val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                             (val_df['TIMESTAMP'].dt.hour<18), ['y_predict','val_y']].corr()['y_predict'][1])
+
+            self.plot_corr_val(ypred=val_df['y_predict'], ytrue=val_df['val_y'], method='mdv', corr=val_df.corr()['y_predict'][1])
+            self.plot_corr_val(ypred=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'y_predict'],
+                               ytrue=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'val_y'],
+                               method='mdv_daytime', corr=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), ['y_predict','val_y']].corr()['y_predict'][1])
+
+
+
         if 'lr' in listOfmethods:
             print('#####\t LR \t#####')
             self.ET_names.append('ET_lr')
@@ -544,24 +669,51 @@ class gapfilling_iab3:
             iab3_df_copy_na = iab3_df_copy.copy()
             iab3_df_copy_na.dropna(subset=column_x_ET, inplace=True)
 
-            X = iab3_df_copy_na[column_x]
-            y = iab3_df_copy_na['ET']
+            X = iab3_df_copy_na[column_x+['TIMESTAMP']]
+            y = iab3_df_copy_na[['ET','TIMESTAMP']]
 
             train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
 
             lm = LinearRegression()
-            model = lm.fit(train_X, train_y)
+            model = lm.fit(train_X[column_x], train_y['ET'])
 
-            lm_prediction = model.predict(val_X)
+            lm_prediction = model.predict(val_X[column_x])
+
+            val_y['prediction'] = lm_prediction
             # print(lm_prediction)
             print('Validation metrics:')
-            print('MAE: \t',mean_absolute_error(val_y, lm_prediction))
-            print('RMSE: \t', mean_squared_error(val_y, lm_prediction)**(1/2))
+            print('MAE: \t',mean_absolute_error(val_y['ET'], lm_prediction))
+            print('RMSE: \t', mean_squared_error(val_y['ET'], lm_prediction)**(1/2))
+            print('MBE: \t', self.MBE(val_y['ET'], lm_prediction))
 
+            print('MAE (daytime): \t',mean_absolute_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+            print('RMSE (daytime): \t', mean_squared_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction'])**(1/2))
+            print('MBE (daytime): \t', self.MBE(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+
+            # val_df = pd.DataFrame({'y_predict': val_y['prediction'].values, 'val_y':val_y['ET'].values, 'TIMESTAMP':val_y['TIMESTAMP'].values})
+            val_df = val_y.copy()
+            # print(val_df)
+            print(val_y)
+            print(val_df[['prediction','ET']].corr()['prediction'][1])
+            print(val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
+            self.plot_corr_val(ypred=val_df['prediction'], ytrue=val_df['ET'], method='lr', corr=val_df[['prediction','ET']].corr()['prediction'][1])
+            self.plot_corr_val(ypred=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'prediction'],
+                               ytrue=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'ET'],
+                               method='lr_daytime',
+                               corr=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
+
+
+            print('Coef: \t', lm.coef_)
+            print('Intercept:\t ', lm.intercept_)
 
             print('All data metrics:')
             iab3_df_copy.dropna(subset=column_x, inplace=True)
-            model_alldata = lm.fit(X, y)
+            lm2 = LinearRegression()
+            model_alldata = lm2.fit(X[column_x], y['ET'])
             lm_fill = model_alldata.predict(iab3_df_copy[column_x])
             iab3_df_copy['ET_lr'] = lm_fill
             iab3_df_copy.loc[iab3_df_copy['ET_lr']<0, 'ET_lr'] = 0
@@ -569,10 +721,26 @@ class gapfilling_iab3:
             iab3_df_notna = iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_lr'].notna())]
             # print(iab3_df_copy)
             print('MAE: \t', mean_absolute_error(iab3_df_notna['ET'], iab3_df_notna['ET_lr']))
-            print('RMSE: \t', mean_squared_error(iab3_df_notna['ET'], iab3_df_notna['ET_lr']))
+            print('RMSE: \t', mean_squared_error(iab3_df_notna['ET'], iab3_df_notna['ET_lr'])**(1/2))
+            print('MBE: \t', self.MBE(iab3_df_notna['ET'], iab3_df_notna['ET_lr']))
+
+            # print('MAE (daytime): \t', mean_absolute_error(iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                                  (iab3_df_notna['TIMESTAMP'].dt.hour<18),'ET'],
+            #                                                iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                                  (iab3_df_notna['TIMESTAMP'].dt.hour<18),'ET_lr']))
+            # print('RMSE (daytime): \t', mean_squared_error(iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                                  (iab3_df_notna['TIMESTAMP'].dt.hour<18),'ET'],
+            #                                                iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                                  (iab3_df_notna['TIMESTAMP'].dt.hour<18), 'ET_lr'])**(1/2))
+            # print('MBE (daytime): \t', self.MBE(iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                       (iab3_df_notna['TIMESTAMP'].dt.hour<18),'ET'],
+            #                                     iab3_df_notna.loc[(iab3_df_notna['TIMESTAMP'].dt.hour>=6)&
+            #                                                       (iab3_df_notna['TIMESTAMP'].dt.hour<18),'ET_lr']))
+
             # print(iab3_df_copy[['ET','ET_lr']])
             # print(iab3_df_notna.loc[(iab3_df_notna['ET'].notna())&(iab3_df_notna['ET_lr'].notna()),['ET', 'ET_lr']].describe())
-
+            print('Coef: \t', lm2.coef_)
+            print('Intercept:\t ', lm2.intercept_)
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_lr']], on='TIMESTAMP', how='outer')
 
         if 'rfr' in listOfmethods:
@@ -585,17 +753,44 @@ class gapfilling_iab3:
             iab3_df_copy_na = iab3_df_copy.copy()
             iab3_df_copy_na.dropna(subset=column_x_ET, inplace=True)
 
-            X = iab3_df_copy_na[column_x]
-            y = iab3_df_copy_na['ET']
+            X = iab3_df_copy_na[column_x+['TIMESTAMP']]
+            y = iab3_df_copy_na[['ET','TIMESTAMP']]
 
             train_X, val_X, train_y, val_y = train_test_split(X, y, random_state=1, shuffle=True)
 
             print('Validation metrics:')
             et_model_RFR = RandomForestRegressor(random_state=1, criterion='mae')
-            et_model_RFR.fit(train_X, train_y)
-            rfr_validation = et_model_RFR.predict(val_X)
-            print('MAE: \t',mean_absolute_error(val_y, rfr_validation))
-            print('RMSE: \t', mean_squared_error(val_y, rfr_validation))
+            et_model_RFR.fit(train_X[column_x], train_y['ET'])
+            rfr_validation = et_model_RFR.predict(val_X[column_x])
+            val_y['prediction'] = rfr_validation
+
+            print('MAE: \t',mean_absolute_error(val_y['ET'], rfr_validation))
+            print('RMSE: \t', mean_squared_error(val_y['ET'], rfr_validation)**(1/2))
+            print('MBE: \t', self.MBE(val_y['ET'], rfr_validation))
+
+
+            print('MAE (daytime): \t',mean_absolute_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+            print('RMSE (daytime): \t', mean_squared_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction'])**(1/2))
+            print('MBE (daytime): \t', self.MBE(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+
+            # val_df = pd.DataFrame({'y_predict': rfr_validation, 'val_y':val_y.values})
+            val_df = val_y.copy()
+            print(val_df)
+            print(val_df[['prediction', 'ET']].corr()['prediction'][1])
+            print(val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
+            self.plot_corr_val(ypred=val_df['prediction'], ytrue=val_df['ET'], method='rfr', corr=val_df.corr()['prediction'][1])
+            self.plot_corr_val(ypred=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'prediction'],
+                               ytrue=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'ET'],
+                               method='rfr_daytime',
+                               corr=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
+
+
+
+            print('Feature importance:\t ', et_model_RFR.feature_importances_)
 
             print('All data metrics:')
 
@@ -612,12 +807,18 @@ class gapfilling_iab3:
             iab3_df_copy.loc[iab3_df_copy['ET_rfr']<0, 'ET_rfr'] = 0
             print('MAE: \t', mean_absolute_error(iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET'], iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET_rfr']))
             print('RMSE: \t', mean_squared_error(iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET'], iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET_rfr'])**(1/2))
+            print('MBE: \t', self.MBE(iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET'], iab3_df_copy.loc[(iab3_df_copy['ET'].notna())&(iab3_df_copy['ET_rfr'].notna()),'ET_rfr']))
+
+            print('Feature importance:\t ', et_model_RFR_all.feature_importances_)
+
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_rfr']], on='TIMESTAMP', how='outer')
 
         if 'pm' in listOfmethods:
             print('#####\t PM \t#####')
             self.ET_names.append('ET_pm')
 
+            # self._apply
+            # self.d
             self._adjusting_input_pm()
             self._gagc()
 
@@ -663,6 +864,69 @@ class gapfilling_iab3:
             self.iab3_ET_timestamp = pd.merge(left=self.iab3_ET_timestamp, right=iab3_df_copy[['TIMESTAMP', 'ET_pm']], on='TIMESTAMP', how='outer')
             self.iab3_ET_timestamp['ET_pm'] = self.iab3_ET_timestamp['ET_pm'].astype(float)
 
+        if 'pm2' in listOfmethods:
+            # self._gagc_2()
+            self._gagc()
+            pm_inputs_iab3 = ['delta', 'Rn_Avg_MJmh', 'shf_Avg_MJmh', 'air_density', 'VPD_kPa', 'ga','LE_MJmh','psychrometric_kPa', 'gc', 'TIMESTAMP']
+            pm_inputs_iab3_ET = pm_inputs_iab3 + ['ET']
+            iab3_df_copy = self.dropping_bad_data()
+            iab3_df_copy.dropna(subset=pm_inputs_iab3_ET, inplace=True)
+
+            train, val = train_test_split(iab3_df_copy, shuffle=True, random_state=1)
+            train = train.copy()
+            val = val.copy()
+
+            self.iab3_df_gagc_2 = train.set_index('TIMESTAMP').resample('1m').mean()[['ga','gc']]
+            self.iab3_df_gagc_2.reset_index(inplace=True)
+
+            # print(self.iab3_df_gagc_2)
+            for i, row in self.iab3_df_gagc_2.iterrows():
+                val.loc[(val['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(val['TIMESTAMP'].dt.year==row['TIMESTAMP'].year), 'ga_mes'] = row['ga']
+                val.loc[(val['TIMESTAMP'].dt.month==row['TIMESTAMP'].month)&(val['TIMESTAMP'].dt.year==row['TIMESTAMP'].year), 'gc_mes'] = row['gc']
+
+            # print(val[['ga_mes','gc_mes']])
+
+            val['ET_pm'] = (val['delta']*(val['Rn_Avg_MJmh']-val['shf_Avg_MJmh'])+3600*val['air_density']*1.013*10**(-3)*val['VPD_kPa']*val['ga_mes'])/(2.45*(val['delta']+val['psychrometric_kPa']*(1+val['ga_mes']/val['gc_mes'])))
+
+            val.dropna(subset=pm_inputs_iab3_ET+['ga_mes','gc_mes','ET_pm'], inplace=True)
+
+            print(val[['ET_pm','ET']])
+            # print(val[['ET_pm', 'ET']].corr())
+            corr = pd.DataFrame({'real':val['ET'].values, 'predict':val['ET_pm'].astype(float).values, 'TIMESTAMP':val['TIMESTAMP'].values})
+            print(corr[['real','predict']].corr())
+            # print(corr.dtypes)
+
+            print('MAE: \t', mean_absolute_error(val['ET'].values, val['ET_pm'].values))
+            print('RMSE: \t', mean_squared_error(val['ET'].values, val['ET_pm'].values)**(1/2))
+            print('MBE: \t', self.MBE(val['ET'].values, val['ET_pm'].values))
+
+            print('MAE (daytime): \t', mean_absolute_error(val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                                   (val['TIMESTAMP'].dt.hour<18),'ET'].values,
+                                                           val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                                   (val['TIMESTAMP'].dt.hour<18),'ET_pm'].values))
+            print('RMSE (daytime): \t', mean_squared_error(val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                                   (val['TIMESTAMP'].dt.hour<18),'ET'].values,
+                                                           val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                                   (val['TIMESTAMP'].dt.hour<18),'ET_pm'].values)**(1/2))
+            print('MBE (daytime): \t', self.MBE(val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                        (val['TIMESTAMP'].dt.hour<18),'ET'].values,
+                                                val.loc[(val['TIMESTAMP'].dt.hour>=6)&
+                                                        (val['TIMESTAMP'].dt.hour<18),'ET_pm'].values))
+
+            #
+            # plt.scatter(val['ET'], val['ET_pm'])
+            self.plot_corr_val(ytrue=corr['real'], ypred=corr['predict'], method='pm', corr=corr[['real','predict']].corr()['real'][1])
+            self.plot_corr_val(ytrue=corr.loc[(corr['TIMESTAMP'].dt.hour>=6)&
+                                              (corr['TIMESTAMP'].dt.hour<18),'real'],
+                               ypred=corr.loc[(corr['TIMESTAMP'].dt.hour>=6)&
+                                              (corr['TIMESTAMP'].dt.hour<18),'predict'],
+                               method='pm_daytime',
+                               corr=corr.loc[(corr['TIMESTAMP'].dt.hour>=6)&(corr['TIMESTAMP'].dt.hour<18),['real','predict']].corr()['real'][1])
+
+
+
+
+
         if 'dnn' in listOfmethods:
             print('#####\t DNN \t#####')
             self.ET_names.append('ET_dnn')
@@ -674,20 +938,54 @@ class gapfilling_iab3:
             iab3_df_copy_na = iab3_df_copy.copy()
             iab3_df_copy_na.dropna(subset=['ET'], inplace=True)
 
-            X = iab3_df_copy_na[column_x]
-            y = iab3_df_copy_na['ET']
+            X = iab3_df_copy_na[column_x+['TIMESTAMP']]
+            y = iab3_df_copy_na[['ET','TIMESTAMP']]
 
-            X_scale = preprocessing.scale(X)
-            train_X, val_X, train_y, val_y = train_test_split(X_scale, y, random_state=1, shuffle=True)
+            X_scale = preprocessing.scale(X[column_x])
+            # print(X_scale)
+            df_x_scale = pd.DataFrame(X_scale, columns=column_x)
+            # print(df_x_scale)
+            df_x_scale['TIMESTAMP'] = X['TIMESTAMP']
+
+            # X_scale['TIMESTAMP'] = X['TIMESTAMP']
+            train_X, val_X, train_y, val_y = train_test_split(df_x_scale, y, random_state=1, shuffle=True)
 
             print('Validation metrics:')
-            model_val = self.dnn_model(train_X=train_X,val_X=val_X,
-                                    train_y=train_y, val_y=val_y,
-                                    learning_rate=[1e-2], epochs=[50], batch_size=[512])
+            model_val = self.dnn_model(train_X=train_X[column_x],val_X=val_X[column_x],
+                                    train_y=train_y['ET'], val_y=val_y['ET'],
+                                    learning_rate=[1e-2], epochs=[200], batch_size=[512])
+            y_mbe = model_val[0].predict(val_X[column_x])
+            print('MBE: \t', self.MBE(val_y['ET'].values, y_mbe))
+
+            val_y['prediction'] = y_mbe
+
+
+            print('MAE (daytime): \t',mean_absolute_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+            print('RMSE (daytime): \t', mean_squared_error(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction'])**(1/2))
+            print('MBE (daytime): \t', self.MBE(val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'ET'], val_y.loc[(val_y['TIMESTAMP'].dt.hour>=6)&(val_y['TIMESTAMP'].dt.hour<18),'prediction']))
+
+
+            # print(y_mbe)
+            # print(np.shape(y_mbe), np.shape(val_y.to_numpy()))
+            # print(val_y.values)
+            val_df = val_y.copy()
+            # val_df = pd.DataFrame({'y_predict': y_mbe.reshape(len(y_mbe)), 'val_y':val_y['ET'].values})
+            print(val_df)
+            print(val_df[['prediction','ET']].corr()['prediction'][1])
+            print(val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
+            self.plot_corr_val(ypred=val_df['prediction'], ytrue=val_df['ET'], method='dnn', corr=val_df.corr()['prediction'][1])
+            self.plot_corr_val(ypred=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'prediction'],
+                               ytrue=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'ET'],
+                               method='dnn_daytime',
+                               corr=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18), ['prediction', 'ET']].corr()['prediction'][1])
+
             print('All data metrics: ')
             models = self.dnn_model(train_X=X_scale,val_X=X_scale,
-                                    train_y=y, val_y=y,
-                                    learning_rate=[1e-2], epochs=[50], batch_size=[512])
+                                    train_y=y['ET'], val_y=y['ET'],
+                                    learning_rate=[1e-2], epochs=[200], batch_size=[512])
             #
             X_predict = iab3_df_copy[column_x]
             X_predict = preprocessing.scale(X_predict)
@@ -937,7 +1235,7 @@ class gapfilling_iab3:
             # print(iab3_alldates[column_x_n].to_numpy())
 
             iab3_alldates['ET_shift'] = iab3_alldates['ET'].shift(1)
-            train_X, val_X, train_y, val_y = train_test_split(iab3_alldates[column_x_n], iab3_alldates['ET_shift'], shuffle=False, test_size=0.25)
+            train_X, val_X, train_y, val_y = train_test_split(iab3_alldates[column_x_n], iab3_alldates[['ET_shift','TIMESTAMP']], shuffle=False, test_size=0.25)
 
             # print('train')
             # print(train_y)
@@ -949,10 +1247,10 @@ class gapfilling_iab3:
             generator_t = TimeseriesGenerator(train_X.to_numpy(),
                                               # iab3_alldates[column_x].to_numpy(),
                                               # iab3_alldates['ET_shift'].to_numpy(),
-                                              train_y.to_numpy(),
+                                              train_y['ET_shift'].to_numpy(),
                                                length=length,
                                                batch_size=batch_size, shuffle=False)
-            generator_val = TimeseriesGenerator(val_X.to_numpy(), val_y.to_numpy(), length=length, batch_size=batch_size, shuffle=False)
+            generator_val = TimeseriesGenerator(val_X.to_numpy(), val_y['ET_shift'].to_numpy(), length=length, batch_size=batch_size, shuffle=False)
             generator_all = TimeseriesGenerator(iab3_alldates[column_x_n].to_numpy(), iab3_alldates['ET_shift'].to_numpy(), length=length, batch_size=batch_size, shuffle=False)
 
 
@@ -960,18 +1258,50 @@ class gapfilling_iab3:
                                                  generator_train=generator_t,
                                                  generator_val=generator_val,
                                                  n_columns=len(column_x_n),
-                                                 epochs=10)
+                                                 epochs=50)
 
 
-            generator_val2 = TimeseriesGenerator(val_X.to_numpy(), val_y.to_numpy(), length=length, batch_size=len(val_y), shuffle=False)
+            generator_val2 = TimeseriesGenerator(val_X.to_numpy(), val_y['ET_shift'].to_numpy(), length=length, batch_size=len(val_y['ET_shift']), shuffle=False)
             for i in generator_val2:
                 forecast = model.predict(i[0])
             lstm_forecast_val = np.insert(forecast, 0, [0 for i in range(length)])
             print('Validation metrics:')
-            df_val = pd.DataFrame({'ET_shift':val_y, 'lstm_forecast_val':lstm_forecast_val})
+            df_val = pd.DataFrame({'ET_shift':val_y['ET_shift'], 'lstm_forecast_val':lstm_forecast_val, 'TIMESTAMP':val_y['TIMESTAMP']})
             df_val_notna = df_val.loc[(df_val['ET_shift'].notna())&(df_val['lstm_forecast_val'].notna())]
             print('MAE: \t',mean_absolute_error(df_val_notna['ET_shift'], df_val_notna['lstm_forecast_val']))
             print('RMSE: \t',mean_squared_error(df_val_notna['ET_shift'], df_val_notna['lstm_forecast_val'])**(1/2))
+            print('MBE: \t', self.MBE(df_val_notna['ET_shift'], df_val_notna['lstm_forecast_val']))
+
+            print('MAE (daytime): \t',mean_absolute_error(df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                                 (df_val_notna['TIMESTAMP'].dt.hour<18),'ET_shift'],
+                                                df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                                 (df_val_notna['TIMESTAMP'].dt.hour<18),'lstm_forecast_val']))
+            print('RMSE (daytime): \t',mean_squared_error(df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                                 (df_val_notna['TIMESTAMP'].dt.hour<18),'ET_shift'],
+                                                df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                                 (df_val_notna['TIMESTAMP'].dt.hour<18),'lstm_forecast_val'])**(1/2))
+            print('MBE (daytime): \t', self.MBE(df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                       (df_val_notna['TIMESTAMP'].dt.hour<18),'ET_shift'],
+                                      df_val_notna.loc[(df_val_notna['TIMESTAMP'].dt.hour>=6)&
+                                                       (df_val_notna['TIMESTAMP'].dt.hour<18),'lstm_forecast_val']))
+
+            val_df = pd.DataFrame({'y_predict': df_val_notna['ET_shift'].values, 'val_y':df_val_notna['lstm_forecast_val'].values, 'TIMESTAMP':df_val_notna['TIMESTAMP'].values})
+
+            print(val_df)
+            print(val_df[['y_predict','val_y']].corr()['y_predict'][1])
+
+            print(val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18),['y_predict','val_y']].corr()['y_predict'][1])
+
+            self.plot_corr_val(ypred=val_df['y_predict'], ytrue=val_df['val_y'], method='lstm', corr=val_df.corr()['y_predict'][1])
+
+            self.plot_corr_val(ypred=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'y_predict'],
+                               ytrue=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&
+                                                (val_df['TIMESTAMP'].dt.hour<18), 'val_y'],
+                               method='lstm_daytime',
+                               corr=val_df.loc[(val_df['TIMESTAMP'].dt.hour>=6)&(val_df['TIMESTAMP'].dt.hour<18),['y_predict','val_y']].corr()['y_predict'][1])
+
+
 
             generator_prediction = TimeseriesGenerator(iab3_alldates[column_x_n].to_numpy(), iab3_alldates['ET_shift'].to_numpy(), length=length, batch_size=len(iab3_alldates[column_x_n]), shuffle=False)
             print('All data metrics:')
@@ -1022,6 +1352,24 @@ class gapfilling_iab3:
         print(self.iab3_ET_timestamp[self.ET_names+['ET']].describe())
         print(self.iab3_ET_timestamp[self.filled_ET+['ET']].cumsum().plot())
         # print(self.iab3_ET_timestamp[self.ET_names+['ET']].cumsum().plot())
+
+    def plot_corr_val(self, ytrue, ypred, method, corr):
+        plt.rcParams.update({'font.size': 12})
+        plt.rcParams["font.family"] = "Times New Roman"
+
+        fig, ax = plt.subplots(1, figsize=(4,4), dpi=300)
+
+        ax.scatter(ytrue, ypred,alpha=0.2)
+        ax.plot([0,1],[0,1], color='red')
+        # ax.set_title(f'{method}')
+        ax.text(0.05,0.9,s=f'$\\rho$ = {corr:.3f}')
+        ax.grid()
+
+        # fig.show()
+        ax.set_ylim((0,1))
+        ax.set_xlim((0,1))
+        # plt.show()
+        fig.savefig(f'val_corr_{method}.png')
 
     def stats_others(self, stats=[], which=[]):
         iab3_df = self.iab3_df
@@ -1094,7 +1442,6 @@ class gapfilling_iab3:
             ax2.legend()
             plt.rc('axes', labelsize=14)
 
-
         if 'gaps_iab2' in stats:
             fig_03, ax3 = plt.subplots(1, figsize=(10,4), dpi=300)
             columns_iab2 = ['AirTC_Avg','CNR_Wm2_Avg','G_Wm2_Avg']
@@ -1114,10 +1461,9 @@ class gapfilling_iab3:
             ax3.legend()
             plt.rc('axes', labelsize=14)
 
-
-
-
         if 'pm' in stats:
+            # plt.rcParams.update({'font.size': 12})
+
             # print(self.iab3_df[['TIMESTAMP','ga','gc']])
             # print(self.iab3_df['TIMESTAMP'].dt.hour.unique())
 
@@ -1130,12 +1476,12 @@ class gapfilling_iab3:
             #                  (self.iab3_df['flag_rain']==1)&
             #                  (self.iab3_df['flag_signalStr']==1)&
             #                  (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['TIMESTAMP','gc'].var())
-            ano = 2020
+            ano = 2019
             meses_chuva = [1,2,3,10,11,12]
             meses_seco = [4,5,6,7,8,9]
 
             # footprint = 0.8
-            fig_01, ax = plt.subplots(5, figsize=(12,15))
+            fig_01, ax = plt.subplots(2, figsize=(8,6))
 
             # self.iab3_df.loc[self.iab3_df['ga']>0].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
@@ -1156,19 +1502,25 @@ class gapfilling_iab3:
 
 
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                             (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                              (self.iab3_df['flag_qaqc']==1)&
                              (self.iab3_df['flag_rain']==1)&
                              (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==1)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='blue')
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='blue', label='$Cerrado\ sensu\ stricto$')
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                              (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                              (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                              (self.iab3_df['flag_qaqc']==1)&
                              (self.iab3_df['flag_rain']==1)&
                              (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==0)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='orange')
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='orange', label='$Outros$')
 
             gc_seco = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                        (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                                        (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                                          (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
                                          (self.iab3_df['flag_qaqc']==1)&
                                          (self.iab3_df['flag_rain']==1)&
@@ -1177,24 +1529,30 @@ class gapfilling_iab3:
                                          (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
             gc_chuva = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
+                             (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                             (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                              (self.iab3_df['flag_qaqc']==1)&
                              (self.iab3_df['flag_rain']==1)&
                              (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==1)&
                              (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
-            ax[1].plot(range(24), gc_seco, linestyle='--', color='lightblue')
-            ax[1].plot(range(24), gc_chuva, linestyle='--', color='darkblue')
+            # ax[1].plot(range(6,19,1), gc_seco, linestyle='--', color='lightblue')
+            # ax[1].plot(range(6,19,1), gc_chuva, linestyle='--', color='darkblue')
 
-            ax[1].fill_between(range(24), gc_seco, gc_chuva, alpha=0.2, color='blue')
+            ax[1].fill_between(range(6,19,1), gc_seco, gc_chuva, alpha=0.2, color='blue')
 
             gc_seco_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
                                          (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
+                                          (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                                          (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                                          (self.iab3_df['flag_qaqc']==1)&
                                          (self.iab3_df['flag_rain']==1)&
                                          (self.iab3_df['flag_signalStr']==1)&
                                          (self.iab3_df['flag_footprint']==0)&
                                          (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
             gc_chuva_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                                           (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                                           (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
                              (self.iab3_df['flag_qaqc']==1)&
                              (self.iab3_df['flag_rain']==1)&
@@ -1202,53 +1560,56 @@ class gapfilling_iab3:
                              (self.iab3_df['flag_footprint']==0)&
                              (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
 
-            ax[1].plot(range(24), gc_seco_p, linestyle='--', color='yellow')
-            ax[1].plot(range(24), gc_chuva_p, linestyle='--', color='darkorange')
+            # ax[1].plot(range(6,19,1), gc_seco_p, linestyle='--', color='yellow')
+            # ax[1].plot(range(6,19,1), gc_chuva_p, linestyle='--', color='darkorange')
 
-            ax[1].fill_between(range(24), gc_seco_p, gc_chuva_p, alpha=0.2, color='orange')
+            ax[1].fill_between(range(6,19,1), gc_seco_p, gc_chuva_p, alpha=0.2, color='orange')
 
             ax[1].set_yscale('log')
-            ax[1].set_title(f'{ano} - gc mean per hour ')
+            # ax[1].set_title(f'{ano} - gc mean per hour ')
             ax[1].set_ylim((0.001,0.05))
 
-            ax[1].set_xlim((0,23))
+            ax[1].set_ylabel('$g_c [m/s]$')
+            ax[1].set_xlabel('Horário do dia')
+            ax[1].set_xlim((6,18))
+            ax[1].legend()
 
 
 
 
-            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour,y='gc',
-                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                                              (self.iab3_df['flag_qaqc']==1)&
-                                              (self.iab3_df['flag_rain']==1)&
-                                              (self.iab3_df['flag_signalStr']==1)&
-                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[2],hue_order=[1,0])
-            ax[2].set_yscale('log')
-            ax[2].set_title(f'{ano} - gc boxplot per hour')
-            ax[2].set_ylim((0.00001,0.1))
+            # sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour,y='gc',
+            #             data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+            #                                   (self.iab3_df['flag_qaqc']==1)&
+            #                                   (self.iab3_df['flag_rain']==1)&
+            #                                   (self.iab3_df['flag_signalStr']==1)&
+            #                                   (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[2],hue_order=[1,0])
+            # ax[2].set_yscale('log')
+            # ax[2].set_title(f'{ano} - gc boxplot per hour')
+            # ax[2].set_ylim((0.00001,0.1))
 
             # print(self.iab3_df['TIMESTAMP'].dt.month.isin([1,2,3,8]))
 
-            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
-                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
-                                              (self.iab3_df['flag_qaqc']==1)&
-                                              (self.iab3_df['flag_rain']==1)&
-                                              (self.iab3_df['flag_signalStr']==1)&
-                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[3],hue_order=[1,0])
-            sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
-                        data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                                              (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
-                                              (self.iab3_df['flag_qaqc']==1)&
-                                              (self.iab3_df['flag_rain']==1)&
-                                              (self.iab3_df['flag_signalStr']==1)&
-                                              (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[4],hue_order=[1,0])
+            # sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
+            #             data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+            #                                   (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
+            #                                   (self.iab3_df['flag_qaqc']==1)&
+            #                                   (self.iab3_df['flag_rain']==1)&
+            #                                   (self.iab3_df['flag_signalStr']==1)&
+            #                                   (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[3],hue_order=[1,0])
+            # sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour, y='gc',
+            #             data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+            #                                   (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
+            #                                   (self.iab3_df['flag_qaqc']==1)&
+            #                                   (self.iab3_df['flag_rain']==1)&
+            #                                   (self.iab3_df['flag_signalStr']==1)&
+            #                                   (self.iab3_df['gc']>0)], hue='flag_footprint',ax=ax[4],hue_order=[1,0])
 
-            ax[3].set_yscale('log')
-            ax[4].set_yscale('log')
-            ax[3].set_ylim((0.00001,0.1))
-            ax[4].set_ylim((0.00001,0.1))
-            ax[3].set_title(f'{ano} - gc boxplot {meses_chuva}')
-            ax[4].set_title(f'{ano} - gc boxplot {meses_seco}')
+            # ax[3].set_yscale('log')
+            # ax[4].set_yscale('log')
+            # ax[3].set_ylim((0.00001,0.1))
+            # ax[4].set_ylim((0.00001,0.1))
+            # ax[3].set_title(f'{ano} - gc boxplot {meses_chuva}')
+            # ax[4].set_title(f'{ano} - gc boxplot {meses_seco}')
 
 
             # fig_01, ax = plt.subplots(1, figsize=(10,3))
@@ -1260,6 +1621,7 @@ class gapfilling_iab3:
             # self.fitting_gagc(show_graphs=True)
             #
             fig_01.tight_layout()
+            fig_01.savefig(f'gagc_{ano}.png', dpi=300)
 
     def stats_ET(self, stats=[]):
         if 'sum' in stats:
@@ -1289,7 +1651,8 @@ class gapfilling_iab3:
 
         if 'gaps' in stats:
             without_bigGAP = True
-
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
             fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(10,100))
             b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
             b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(10,5*len(self.filled_ET)+4))
@@ -1305,13 +1668,13 @@ class gapfilling_iab3:
                 if without_bigGAP == False:
                     gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
                     gap_cumulative = gaps_et_index/pd.Timedelta('00:30:00')-1
-                    gaps_et_index = [str(i) for i in gaps_et_index]
+                    gaps_et_index = [str(i-pd.Timedelta('00:30:00')) for i in gaps_et_index]
                     gaps_et_count = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().values
 
                 elif without_bigGAP == True:
                     gaps_et_index = et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts().sort_index().index
                     gap_cumulative = gaps_et_index/pd.Timedelta('00:30:00')-1
-                    gaps_et_index = [str(i) for i in gaps_et_index]
+                    gaps_et_index = [str(i-pd.Timedelta('00:30:00')) for i in gaps_et_index]
                     gaps_et_count = et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts().sort_index().values
 
                 ax2 = ax[j+1].twinx()
@@ -1320,6 +1683,8 @@ class gapfilling_iab3:
                 # plt.xticks(rotation=90)
                 ax[j+1].set_xticklabels(labels=gaps_et_index,rotation=90)
                 ax[j+1].set_title(f'{variable} GAPS')
+                ax[j+1].set_ylabel('Quantidade de falhas')
+                ax[j+1].set_xlabel('Tamanho da janela de falha')
                 for i, valor in enumerate(gaps_et_count):
                     ax[j+1].text(i-0.5, valor+1, str(valor))
 
@@ -1348,6 +1713,8 @@ class gapfilling_iab3:
             fig_01.tight_layout()
 
         if 'corr' in stats:
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
             # print(self.iab3_ET_timestamp[['ET_rfr','ET_lr']].describe())
             r = 0
             if 'ET_baseline' in self.ET_names:
@@ -1364,21 +1731,49 @@ class gapfilling_iab3:
             # print(self.iab3_ET_timestamp.columns)
 
             self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
-                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'daytime'] = True
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18),'Diurno'] = True
             self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<6)|
-                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'daytime'] = False
+                                       (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=18),'Diurno'] = False
 
 
             # print(self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET']+self.ET_names])
 
             # Talvez fazer uma coluna para diferenciação da hora do dia/ano
-            sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','daytime']+self.ET_names],
-                         plot_kws={'alpha': 0.2},
-                         hue='daytime',
-                         hue_order=[1,0],
-                         palette=['orange','blue'],
-                         # hue='flag_footprint',
-                         corner=True)
+            # sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','daytime']+self.ET_names],
+            #              plot_kws={'alpha': 0.2},
+            #              hue='daytime',
+            #              hue_order=[1,0],
+            #              palette=['orange','blue'],
+            #              # hue='flag_footprint',
+            #              corner=True)
+
+            for et_names in self.ET_names:
+                # fig, ax = plt.subplots(1, figsize=(6,6))
+                g = sns.pairplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','Diurno']+[et_names]],
+                             plot_kws={'alpha': 0.2},
+                             hue='Diurno',
+                             hue_order=[1,0],
+                             palette=['orange','blue'],
+                             # hue='flag_footprint',
+                             corner=True, height=3)
+                # g.axes[0,0].set_xlim((0,1.1))
+                # g.axes[0,0].set_ylim((0,1.1))
+                g.axes[1,0].set(ylim=(0,1))
+                g.axes[0,0].set(xlim=(0,1))
+
+                # g.savefig(f'corr_{et_names}_adjusted.png', dpi=300)
+                # g.fig.set
+                # fig = g.get_figure()
+                # sns.jointplot(data=self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['ET'].notna()), ['ET','Diurno']+[et_names]],
+                #               x='ET', y=et_names,
+                #               alpha=0.2,
+                #               hue='Diurno'
+                              # hue_order=[1,0]
+                              # kind='kde'
+                              # )
+
+                # fig.show()
+
 
             if r == 1:
                 # print('dafsfsf')
@@ -1403,8 +1798,10 @@ class gapfilling_iab3:
                          corner=True)
 
         if 'heatmap' in stats:
+
             import matplotlib.dates as md
             plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
 
             self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
             try:
@@ -1413,23 +1810,41 @@ class gapfilling_iab3:
                 pass
 
             print(self.ET_names)
+            print(self.iab3_ET_timestamp[self.ET_names].max())
 
             self.iab3_ET_timestamp['date'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.date
             # print(self.iab3_ET_timestamp['date'])
 
             self.iab3_ET_timestamp['time'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.time
 
+            dnum = mdates.date2num(self.iab3_ET_timestamp['TIMESTAMP'])
+            start = dnum[0] - (dnum[1]-dnum[0])/2.
+            stop = dnum[-1] + (dnum[1]-dnum[0])/2.
+            extent = [start, stop, -0.5, 2]
+
             # print(pd.to_datetime(self.iab3_ET_timestamp['date']))
             # print(self.iab3_ET_timestamp[['date','time','ET']])
             # print(self.iab3_ET_timestamp.pivot('time','date','ET'))
 
-            fig, ax = plt.subplots(len(self.ET_names)+1,figsize=(20,6*len(self.ET_names)))
-            sns.heatmap(self.iab3_ET_timestamp.pivot('time','date','ET'),fmt='d',
-                        cmap='inferno',
-                         xticklabels=30,
-                         # xticklabels=['2019-08-01','2019-09-30'],
-                         ax=ax[0])
+            fig, ax = plt.subplots(len(self.ET_names)+1,figsize=(8,4*len(self.ET_names)), dpi=300)
+            # fig, ax = plt.subplots(1,figsize=(7,3), dpi=300)
+            # sns.heatmap(self.iab3_ET_timestamp.pivot('time','date','ET'),fmt='d',
+            #             cmap='inferno',
+            #              xticklabels=30,
+            #              # xticklabels=['2019-08-01','2019-09-30'],
+            #              ax=ax)
+
+            im=ax[0].imshow(self.iab3_ET_timestamp.pivot('time','date','ET'), aspect='auto', extent=extent, cmap='viridis', vmin=0, vmax=0.9)
             ax[0].set_title('ET')
+            ax[0].xaxis.set_major_locator(mdates.YearLocator())
+            ax[0].xaxis.set_minor_locator(mdates.MonthLocator(bymonth=[4,7,10]))
+            ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
+            ax[0].xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+            ax[0].set_yticklabels(['22:00','20:00','18:00','16:00','14:00','12:00','10:00','08:00','06:00','04:00','02:00','00:00'])
+            ax[0].set_yticks(np.linspace(-0.3, 2,12))
+            plt.colorbar(im, ax=ax[0])
+
+
             # ax[0].set_xticklabels()
             # ax[0].xaxis.set_major_locator(md.YearLocator())
             # ax[0].xaxis.set_major_formatter(md.DateFormatter('%Y-%m-%d'))
@@ -1441,15 +1856,25 @@ class gapfilling_iab3:
 
 
             for i, et_name in enumerate(self.ET_names):
-                sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),
-                            fmt='d',
-                            cmap='inferno',
-                            xticklabels=30,
-                            ax=ax[i+1])
-                ax[i+1].set_title(f'{et_name}')
+                # sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),
+                #             fmt='d',
+                #             cmap='inferno',
+                #             xticklabels=30,
+                #             ax=ax[i+1])
+                im2 = ax[i+1].imshow(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'), aspect='auto', extent=extent, vmin=0, vmax=0.9)
+                # ax[i+1].set_title('ET')
+                ax[i+1].xaxis.set_major_locator(mdates.YearLocator())
+                ax[i+1].xaxis.set_minor_locator(mdates.MonthLocator(bymonth=[4,7,10]))
+                ax[i+1].xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
+                ax[i+1].xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+                ax[i+1].set_yticklabels(['22:00','20:00','18:00','16:00','14:00','12:00','10:00','08:00','06:00','04:00','02:00','00:00'])
+                ax[i+1].set_yticks(np.linspace(-0.3, 2,12))
+                ax[i+1].set_title(f'{et_name}', fontsize=5)
+                plt.colorbar(im2, ax=ax[i+1])
+            # fig.autofmt_xdate()
 
             fig.tight_layout()
-            fig.savefig('heatmap_et.png', dpi=300)
+            # fig.savefig('heatmap_et_testes.png', dpi=300)
 
         if 'daynight' in stats:
             t = self.iab3_ET_timestamp.copy()
@@ -1492,7 +1917,10 @@ class gapfilling_iab3:
             et_sum_chuva = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_chuva))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2
             et_sum_seco = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.month.isin(meses_seco))].groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2
 
+            print('##############Rainy:')
             print(et_sum_chuva/n_days_chuva)
+
+            print('###############Dry:')
             print(et_sum_seco/n_days_seco)
 
             fig, ax = plt.subplots(3, figsize=(10,9))
@@ -1532,7 +1960,6 @@ class gapfilling_iab3:
                 # print(shapiro(df[i]))
                 # print(kstest(df.loc[:500,i], 'norm'))
 
-
         if 'variance' in stats:
             # print(self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1))
             print(self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names), ['ET']+self.ET_names].describe())
@@ -1554,6 +1981,8 @@ class gapfilling_iab3:
         if 'variance_nonNormal' in stats:
             df = self.iab3_ET_timestamp.loc[self.iab3_ET_timestamp[['ET']+self.ET_names].notna().sum(axis=1)==len(['ET']+self.ET_names)]
 
+            # df = self.iab3_ET_timestamp.copy()
+
 
             df_dia = df.loc[(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour>=6)&
                                        (self.iab3_ET_timestamp['TIMESTAMP'].dt.hour<18)]
@@ -1569,9 +1998,17 @@ class gapfilling_iab3:
             for i in self.ET_names:
                 print(i)
                 # print('DIA: ')
-                print('DIA: \t', kruskalwallis(df_dia['ET'].values, df_dia[i].values))
-                print('NOITE: \t', kruskalwallis(df_noite['ET'].values, df_noite[i].values))
+                # print('DIA: \t', kruskalwallis(df_dia['ET'].values, df_dia[i].values))
+                # print('NOITE: \t', kruskalwallis(df_noite['ET'].values, df_noite[i].values))
                 # print(friedmanchisquare(df['ET'], df[i]))
+
+                print('DIA:\t', kruskal(df_dia['ET'].values, df_dia[i].values))
+                print('NOITE: \t', kruskal(df_noite['ET'].values, df_noite[i].values))
+
+                # print(kruskal(df_dia.loc[df_dia['ET'].notna(),'ET'].values, df_dia.loc[df_dia[i].notna(),i].values))
+
+                # print(kruskal(df_dia.loc[(df_dia['ET'].notna())&(df_dia[f'{i}'].notna()), 'ET'].values,
+                #               df_dia.loc[(df_dia['ET'].notna())&(df_dia[f'{i}'].notna()), f'{i}'].values))
 
 
 if __name__ == '__main__':
