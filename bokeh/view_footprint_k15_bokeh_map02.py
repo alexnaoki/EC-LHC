@@ -521,7 +521,7 @@ class view_k15:
                                               sigmav=inputs_to_k15['v_var'].to_list(),
                                               ustar=inputs_to_k15['u*'].to_list(),
                                               wind_dir=inputs_to_k15['wind_dir_compass'].to_list(),
-                                              rs=[0.3, 0.8], crop=False, fig=False)
+                                              rs=[0.9], crop=False, fig=False)
 
             # Criação do polígono do footprint 90% para Sirgas 2000 utm 23S com o ponto de referência a torre IAB3
             print(np.shape(out['xr']), np.shape(out['yr']))
