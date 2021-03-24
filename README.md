@@ -42,6 +42,11 @@ Os programas desenvolvidos utilizando *Bokeh* têm como função principal a int
 ### Preenchimento de falhas
 O código de preenchimento de falha está no formato *.py*, porém, o *workflow* escolhido para visualização da performance e utilização (em geral) é utilizando um Jupyter Notebook (ou JupyterLab) com *.ipynb*.
 
+O código que contém os métodos de preenchimento de falhas são encontrados [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/gapfilling/gapfilling_iab3.py).
+
+Para a utilização dos métodos de preenchimento de falhas algumas etapas devem ser respeitadas, a qual são descritas [aqui](https://github.com/alexnaoki/EC-LHC/blob/master/info/descricao_arquivo_gapfilling.md).
+
+
 ### bqplot **(DEPRECIADO)**
 A pasta com bqplot não é mais atualizada.
 > A biblioteca bqplot é interessante, porém, ela possui um performance ruim e serviu para o aprendizado de algumas ferramentas de interação.
