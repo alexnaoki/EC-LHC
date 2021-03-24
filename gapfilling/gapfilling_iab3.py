@@ -1258,7 +1258,7 @@ class gapfilling_iab3:
                                                  generator_train=generator_t,
                                                  generator_val=generator_val,
                                                  n_columns=len(column_x_n),
-                                                 epochs=50)
+                                                 epochs=20)
 
 
             generator_val2 = TimeseriesGenerator(val_X.to_numpy(), val_y['ET_shift'].to_numpy(), length=length, batch_size=len(val_y['ET_shift']), shuffle=False)
@@ -1378,6 +1378,10 @@ class gapfilling_iab3:
         if 'gaps_iab3' in stats:
             without_bigGAP = True
 
+            import matplotlib.dates as md
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
+
             columns = ['Rn_Avg', 'RH', 'VPD','shf_Avg(1)','shf_Avg(2)']
             fig_00, ax0 = plt.subplots(1, figsize=(10,4), dpi=300)
 
@@ -1391,11 +1395,14 @@ class gapfilling_iab3:
 
             # ax0.set_title('Gaps in inputs variables (IAB3)')
             ax0.set_ylabel('Quantidade de dados diário')
-            ax0.set_xlabel('Data')
+            ax0.set_xlabel('')
 
             ax0.set_ylim((-1,50))
             ax0.legend(loc='lower left')
             plt.rc('axes', labelsize=14)
+            # fig_00.savefig('iab3_gaps_meteo.png')
+
+
 
             fig_01, ax = plt.subplots(len(columns), figsize=(10,4*len(columns)+4))
 
@@ -1428,6 +1435,10 @@ class gapfilling_iab3:
             fig_01.tight_layout()
 
         if 'gaps_iab1' in stats:
+            import matplotlib.dates as md
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
+
             fig_02, ax2 = plt.subplots(1, figsize=(10,4), dpi=300)
 
             # print(self.iab1_df[['TIMESTAMP','RH']])
@@ -1437,12 +1448,17 @@ class gapfilling_iab3:
             ax2.set_ylim((-1,150))
             # ax2.legend(['dfasdf'])
             ax2.set_ylabel('Quantidade de dados diário')
-            ax2.set_xlabel('Data')
+            ax2.set_xlabel('')
             # ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
             ax2.legend()
             plt.rc('axes', labelsize=14)
+            # fig_02.savefig('iab1_gaps_meteo.png')
 
         if 'gaps_iab2' in stats:
+            import matplotlib.dates as md
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
+
             fig_03, ax3 = plt.subplots(1, figsize=(10,4), dpi=300)
             columns_iab2 = ['AirTC_Avg','CNR_Wm2_Avg','G_Wm2_Avg']
             iab2_data = self.iab2_df.loc[self.iab2_df['TIMESTAMP']>'2018-10-05', columns_iab2+['TIMESTAMP']].copy()
@@ -1456,10 +1472,12 @@ class gapfilling_iab3:
 
             ax3.set_ylim((-1,150))
             ax3.set_ylabel('Quantidade de dados diário')
-            ax3.set_xlabel('Data')
+            ax3.set_xlabel('')
 
             ax3.legend()
             plt.rc('axes', labelsize=14)
+
+            fig_03.savefig('iab2_gaps_meteo.png')
 
         if 'pm' in stats:
             # plt.rcParams.update({'font.size': 12})
@@ -1653,7 +1671,7 @@ class gapfilling_iab3:
             without_bigGAP = True
             plt.rcParams.update({'font.size': 12})
             plt.rcParams["font.family"] = "Times New Roman"
-            fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(10,100))
+            fig_01, ax = plt.subplots(len(self.filled_ET)+2, figsize=(10,100), dpi=300)
             b = self.iab3_ET_timestamp.set_index('TIMESTAMP')
             b.resample('D').count()[self.filled_ET+['ET']].plot(ax=ax[0], figsize=(10,5*len(self.filled_ET)+4))
             ax[0].set_ylim((0,50))
@@ -1664,6 +1682,8 @@ class gapfilling_iab3:
 
                 sorted_timestamp = self.iab3_ET_timestamp.sort_values(by='TIMESTAMP')
                 et_diff = sorted_timestamp.loc[(sorted_timestamp[f'{variable}'].notna()), 'TIMESTAMP'].diff()
+
+                # print(sorted_timestamp.loc[sorted_timestamp[f'{variable}'].notna(), ['TIMESTAMP',variable]].describe())
 
                 if without_bigGAP == False:
                     gaps_et_index = et_diff.loc[et_diff>pd.Timedelta('00:30:00')].value_counts().sort_index().index
@@ -1676,23 +1696,31 @@ class gapfilling_iab3:
                     gap_cumulative = gaps_et_index/pd.Timedelta('00:30:00')-1
                     gaps_et_index = [str(i-pd.Timedelta('00:30:00')) for i in gaps_et_index]
                     gaps_et_count = et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts().sort_index().values
+                    # print(et_diff.loc[(et_diff>pd.Timedelta('00:30:00')) & (et_diff<pd.Timedelta('120 days'))].value_counts())
+                    # print(gaps_et_count)
 
                 ax2 = ax[j+1].twinx()
 
                 gaps_sizes = ax[j+1].bar(gaps_et_index, gaps_et_count)
                 # plt.xticks(rotation=90)
-                ax[j+1].set_xticklabels(labels=gaps_et_index,rotation=90)
+                ax[j+1].set_xticklabels(labels=gaps_et_index,rotation=90, fontsize=10)
                 ax[j+1].set_title(f'{variable} GAPS')
-                ax[j+1].set_ylabel('Quantidade de falhas')
+                ax[j+1].set_ylabel('Número de falhas')
+                ax2.set_ylabel('Porcentagem acumulada das falhas')
                 ax[j+1].set_xlabel('Tamanho da janela de falha')
+                plt.grid()
                 for i, valor in enumerate(gaps_et_count):
-                    ax[j+1].text(i-0.5, valor+1, str(valor))
+                    ax[j+1].text(i-0.2, valor+1, str(valor))
 
-                ax2.plot(gaps_et_index, gap_cumulative*gaps_et_count, color='red',linestyle='--')
+                # print(type(gap_cumulative))
+                print((gap_cumulative.to_numpy()*gaps_et_count*0.5).cumsum())
+                ax2.plot(gaps_et_index, (gap_cumulative.to_numpy()*gaps_et_count*0.5).cumsum()*100/(gap_cumulative.to_numpy()*gaps_et_count*0.5).cumsum()[-1], color='red',linestyle='--')
+                # plt.legend()
 
                 # ax[j+1].set_xticklabels([])
 
             fig_01.tight_layout()
+            # fig_01.savefig('gaps_et_methods.png')
 
         if 'hourly' in stats:
             # print(self.iab3_ET_timestamp['TIMESTAMP'].dt.hour.unique())
@@ -1893,6 +1921,10 @@ class gapfilling_iab3:
             print(t.loc[(t['TIMESTAMP'].dt.hour>=6)&(t['TIMESTAMP'].dt.hour<=18)].groupby(t['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2)
 
             # print(t.loc[t['flag_rain']==0, self.filled_ET].count())
+        if 'daytime' in stats:
+            t = self.iab3_ET_timestamp.copy()
+            print(t[self.filled_ET+['ET']].describe())
+            print(t.loc[(t['TIMESTAMP'].dt.hour>=6)&(t['TIMESTAMP'].dt.hour<18),self.filled_ET+['ET']].describe())
 
         if 'daily' in stats:
 
