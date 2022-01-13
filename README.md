@@ -6,6 +6,9 @@ Período do Mestrado: **Fevereiro/2019** até **14/04/2021** (Data limite para d
 
 Qualificação aprovado: **03/03/2020** (Banca: Edson Wendland, Rodrigo Porto, Maria Mercedes)
 
+Defesa do Mestrado: **Aprovado no dia 19/05/2021** (Banca: Edson Wendland, Osvaldo Cabral, Debora Regina Roberti)
+
+
 ## Fases do projeto do Mestrado
 O projeto de Mestrado apresentado na Qualificação consiste basicamente em 3 (três) partes principais:
 1. Definição do programa de processamento para "Eddy Covariance" com dados de baixa frequência da torre de monitoramento (IAB3).
