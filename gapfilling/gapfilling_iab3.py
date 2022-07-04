@@ -140,6 +140,7 @@ class gapfilling_iab3:
         # Creating a copy and changing to 'nan' filtered values
         iab3_df_copy = self.iab3_df.copy()
         # print(iab3_df_copy.loc[(iab3_df_copy['TIMESTAMP'].dt.year==2020)&(iab3_df_copy['TIMESTAMP'].dt.month==11), 'ET'].describe())
+        iab3_df_copy['ET_withoutFilter'] = iab3_df_copy['ET'].copy()
 
         iab3_df_copy.loc[
             (iab3_df_copy['flag_qaqc']==0)|
@@ -1499,7 +1500,7 @@ class gapfilling_iab3:
             meses_seco = [4,5,6,7,8,9]
 
             # footprint = 0.8
-            fig_01, ax = plt.subplots(2, figsize=(8,6))
+            fig_01, ax = plt.subplots(4, figsize=(8,14))
 
             # self.iab3_df.loc[self.iab3_df['ga']>0].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['ga'].mean().plot(ax=ax[0])
             self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
@@ -1519,22 +1520,25 @@ class gapfilling_iab3:
             ax[0].set_xlim((0,23))
 
 
-            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+            media = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
                              (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
                              (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
                              (self.iab3_df['flag_qaqc']==1)&
                              (self.iab3_df['flag_rain']==1)&
                              (self.iab3_df['flag_signalStr']==1)&
                              (self.iab3_df['flag_footprint']==1)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='blue', label='$Cerrado\ sensu\ stricto$')
-            self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                              (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
-                              (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
-                             (self.iab3_df['flag_qaqc']==1)&
-                             (self.iab3_df['flag_rain']==1)&
-                             (self.iab3_df['flag_signalStr']==1)&
-                             (self.iab3_df['flag_footprint']==0)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='orange', label='$Outros$')
+                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='blue',
+                                                                                                                     label='Média'
+                                                                                                                     # label='$Cerrado\ sensu\ stricto$'
+                                                                                                                     )
+            # self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+            #                   (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+            #                   (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
+            #                  (self.iab3_df['flag_qaqc']==1)&
+            #                  (self.iab3_df['flag_rain']==1)&
+            #                  (self.iab3_df['flag_signalStr']==1)&
+            #                  (self.iab3_df['flag_footprint']==0)&
+            #                  (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().plot(ax=ax[1], color='orange', label='$Outros$')
 
             gc_seco = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
                                         (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
@@ -1559,29 +1563,8 @@ class gapfilling_iab3:
 
             ax[1].fill_between(range(6,19,1), gc_seco, gc_chuva, alpha=0.2, color='blue')
 
-            gc_seco_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                                         (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_seco))&
-                                          (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
-                                          (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
-                                         (self.iab3_df['flag_qaqc']==1)&
-                                         (self.iab3_df['flag_rain']==1)&
-                                         (self.iab3_df['flag_signalStr']==1)&
-                                         (self.iab3_df['flag_footprint']==0)&
-                                         (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
-            gc_chuva_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
-                                           (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
-                                           (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
-                             (self.iab3_df['TIMESTAMP'].dt.month.isin(meses_chuva))&
-                             (self.iab3_df['flag_qaqc']==1)&
-                             (self.iab3_df['flag_rain']==1)&
-                             (self.iab3_df['flag_signalStr']==1)&
-                             (self.iab3_df['flag_footprint']==0)&
-                             (self.iab3_df['gc']>0)].groupby(by=self.iab3_df['TIMESTAMP'].dt.hour)['gc'].mean().values
+            # gc_seco_p = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
 
-            # ax[1].plot(range(6,19,1), gc_seco_p, linestyle='--', color='yellow')
-            # ax[1].plot(range(6,19,1), gc_chuva_p, linestyle='--', color='darkorange')
-
-            ax[1].fill_between(range(6,19,1), gc_seco_p, gc_chuva_p, alpha=0.2, color='orange')
 
             ax[1].set_yscale('log')
             # ax[1].set_title(f'{ano} - gc mean per hour ')
@@ -1591,9 +1574,46 @@ class gapfilling_iab3:
             ax[1].set_xlabel('Horário do dia')
             ax[1].set_xlim((6,18))
             ax[1].legend()
+            from matplotlib.patches import Patch
+            import matplotlib.lines as mlines
+            blue_line = mlines.Line2D([], [], color='blue', label='Média')
 
+            # plt.legend(handles=[blue_line,Patch(facecolor='blue', alpha=0.4,label='Limites do período seco e chuvoso')], loc='upper left')
 
+            # TESTE
+            df_media = self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
+                             (self.iab3_df['TIMESTAMP'].dt.hour>=6)&
+                             (self.iab3_df['TIMESTAMP'].dt.hour<=18)&
+                             (self.iab3_df['flag_qaqc']==1)&
+                             (self.iab3_df['flag_rain']==1)&
+                             (self.iab3_df['flag_signalStr']==1)&
+                             (self.iab3_df['flag_footprint']==1)&
+                             (self.iab3_df['gc']>0)].groupby(by=[self.iab3_df['TIMESTAMP'].dt.month,self.iab3_df['TIMESTAMP'].dt.hour])
+            df_to_heat = df_media.mean()
+            # print(df_to_heat['gc'])
 
+            df_to_heat.index = df_to_heat.index.set_names('Mês',level=0)
+            df_to_heat.index = df_to_heat.index.set_names('Hora',level=1)
+            df_to_heat.reset_index(inplace=True)
+            # print(df_to_heat[['gc','Mês','Hora']])
+            # print(df_to_heat['gc'].min())
+            print(f"gc min {df_to_heat['gc'].min()} \t|\t gc max: {df_to_heat['gc'].max()}")
+            # df_to_heat.set_index('Hora', inplace=True)
+            pivot = df_to_heat.pivot(index='Hora', columns='Mês', values='gc')
+            print(pivot)
+
+            # print(df_to_heat)
+
+            media2 = df_media['gc'].mean().plot(ax=ax[2], color='blue',
+                                                                                                                     label='Média'
+                                                                                                                     )
+            print(df_media['gc'].mean())
+
+            heat = sns.heatmap(pivot, ax=ax[3],
+                               # vmin=df_to_heat['gc'].min(), vmax=df_to_heat['gc'].max()
+                               vmin=0, vmax=0.02,
+                               cmap='cividis', annot=True, fmt='.3f', annot_kws={"size":10}
+                               )
 
             # sns.boxplot(x=self.iab3_df['TIMESTAMP'].dt.hour,y='gc',
             #             data=self.iab3_df.loc[(self.iab3_df['TIMESTAMP'].dt.year==ano)&
@@ -1639,7 +1659,9 @@ class gapfilling_iab3:
             # self.fitting_gagc(show_graphs=True)
             #
             fig_01.tight_layout()
-            fig_01.savefig(f'gagc_{ano}.png', dpi=300)
+
+            # fig_01.savefig(f'gagc_{ano}_cerrado.png', dpi=300)
+            # fig_01.savefig(f'gc_{ano}_meshora_cerrado_annot.png', dpi=300)
 
     def stats_ET(self, stats=[]):
         if 'sum' in stats:
@@ -1661,6 +1683,7 @@ class gapfilling_iab3:
 
             (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].cumsum()/2).set_index(self.iab3_ET_timestamp['TIMESTAMP']).plot(ax=ax[1])
             ax[1].set_title('Cumulative ET yearly sum in a timeseries')
+            print((self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].sum()/2))
 
             (self.iab3_ET_timestamp.groupby(self.iab3_ET_timestamp['TIMESTAMP'].dt.year)[self.filled_ET+['ET']].count()/17520).plot.bar(ax=ax[2])
             ax[2].set_title('Percentage data filled')
@@ -1903,6 +1926,78 @@ class gapfilling_iab3:
 
             fig.tight_layout()
             # fig.savefig('heatmap_et_testes.png', dpi=300)
+
+        if 'cut_heatmap' in stats:
+            import matplotlib.dates as md
+            plt.rcParams.update({'font.size': 12})
+            plt.rcParams["font.family"] = "Times New Roman"
+
+            self.iab3_ET_timestamp.sort_values(by='TIMESTAMP', inplace=True)
+            try:
+                self.iab3_ET_timestamp.reset_index(inplace=True)
+            except:
+                pass
+
+            print(self.ET_names)
+            print(self.iab3_ET_timestamp[self.ET_names].max())
+
+            self.iab3_ET_timestamp = self.iab3_ET_timestamp.loc[(self.iab3_ET_timestamp['TIMESTAMP']>='2020-02-10')&(self.iab3_ET_timestamp['TIMESTAMP']<'2020-03-10')].copy()
+
+            self.iab3_ET_timestamp['date'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.date
+            # print(self.iab3_ET_timestamp['date'])
+
+            self.iab3_ET_timestamp['time'] = self.iab3_ET_timestamp['TIMESTAMP'].dt.time
+
+            dnum = mdates.date2num(self.iab3_ET_timestamp['TIMESTAMP'])
+            start = dnum[0] - (dnum[1]-dnum[0])/2.
+            stop = dnum[-1] + (dnum[1]-dnum[0])/2.
+            extent = [start, stop, -0.5, 2]
+            fig, ax = plt.subplots(len(self.ET_names)+2,figsize=(5,4*len(self.ET_names)),
+                                    dpi=300
+                                    )
+
+            im=ax[1].imshow(self.iab3_ET_timestamp.pivot('time','date','ET'), aspect='auto', extent=extent, cmap='viridis', vmin=0, vmax=0.9)
+            ax[1].set_title('ET', fontsize=5)
+            ax[1].xaxis.set_major_locator(mdates.YearLocator())
+            ax[1].xaxis.set_minor_locator(mdates.MonthLocator(bymonth=[4,7,10]))
+            ax[1].xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
+            ax[1].xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+            ax[1].set_yticklabels(['22:00','20:00','18:00','16:00','14:00','12:00','10:00','08:00','06:00','04:00','02:00','00:00'])
+            ax[1].set_yticks(np.linspace(-0.3, 2,12))
+            plt.colorbar(im, ax=ax[1])
+
+            im3=ax[0].imshow(self.iab3_ET_timestamp.pivot('time','date','ET_withoutFilter'), aspect='auto', extent=extent, cmap='viridis', vmin=0, vmax=0.9)
+            ax[0].set_title('ET_semfiltro', fontsize=5)
+            ax[0].xaxis.set_major_locator(mdates.YearLocator())
+            ax[0].xaxis.set_minor_locator(mdates.MonthLocator(bymonth=[4,7,10]))
+            ax[0].xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
+            ax[0].xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+            ax[0].set_yticklabels(['22:00','20:00','18:00','16:00','14:00','12:00','10:00','08:00','06:00','04:00','02:00','00:00'])
+            ax[0].set_yticks(np.linspace(-0.3, 2,12))
+            plt.colorbar(im3, ax=ax[0])
+
+
+            for i, et_name in enumerate(self.filled_ET):
+                print(et_name)
+                # sns.heatmap(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'),
+                #             fmt='d',
+                #             cmap='inferno',
+                #             xticklabels=30,
+                #             ax=ax[i+1])
+                im2 = ax[i+2].imshow(self.iab3_ET_timestamp.pivot('time','date',f'{et_name}'), aspect='auto', extent=extent, vmin=0, vmax=0.9)
+                # ax[i+1].set_title('ET')
+                ax[i+2].xaxis.set_major_locator(mdates.YearLocator())
+                ax[i+2].xaxis.set_minor_locator(mdates.MonthLocator(bymonth=[4,7,10]))
+                ax[i+2].xaxis.set_major_formatter(mdates.DateFormatter('%b\n%Y'))
+                ax[i+2].xaxis.set_minor_formatter(mdates.DateFormatter('%b'))
+                ax[i+2].set_yticklabels(['22:00','20:00','18:00','16:00','14:00','12:00','10:00','08:00','06:00','04:00','02:00','00:00'])
+                ax[i+2].set_yticks(np.linspace(-0.3, 2,12))
+                ax[i+2].set_title(f'{et_name}', fontsize=5)
+                plt.colorbar(im2, ax=ax[i+2])
+
+            fig.tight_layout()
+            fig.savefig('heatmap_et_cut.png', dpi=300)
+
 
         if 'daynight' in stats:
             t = self.iab3_ET_timestamp.copy()

@@ -241,7 +241,9 @@ class FFP:
                 xrs.append(xr)
                 yrs.append(yr)
         else:
+            # print('No contour levels requested')
             if crop:
+                # print('crop')
                 rs_dummy = 0.8 #crop to 80%
                 clevs = self.get_contour_levels(f_2d, dx, dy, rs_dummy)
                 xrs = []
@@ -278,6 +280,11 @@ class FFP:
         #===========================================================================
         #Rotate 3d footprint if requested
         if wind_dir is not None:
+            # Unrotated x,y
+            x_2d_unrot = x_2d
+            y_2d_unrot = y_2d
+
+
             wind_dir = wind_dir * np.pi / 180.
             dist = np.sqrt(x_2d**2 + y_2d**2)
             angle = np.arctan2(y_2d, x_2d)
@@ -312,9 +319,9 @@ class FFP:
         #             'x_2d': x_2d, 'y_2d': y_2d, 'f_2d': f_2d, 'flag_err':flag_err}
 
         if rs is not None:
-            return x_ci_max,x_ci, f_ci, x_2d, y_2d, f_2d, rs, frs, xrs, yrs, flag_err
-        else:
-            return x_ci_max, x_ci, f_ci, x_2d, y_2d, f_2d, flag_err
+            return x_ci_max, x_ci, f_ci, x_2d, y_2d, f_2d, rs, frs, xrs, yrs, flag_err, x_2d_unrot, y_2d_unrot
+        else: 
+            return x_ci_max, x_ci, f_ci, x_2d, y_2d, f_2d, flag_err, 0, 0, 0, 0, x_2d_unrot, y_2d_unrot
 
 
     # def output(self):
@@ -330,6 +337,7 @@ class FFP:
         # import sys
 
         #Check input and resolve to default levels in needed
+        # print('getting countour levels')
         if not isinstance(rs, (int, float, list)):
             rs = list(np.linspace(0.10, 0.90, 9))
         if isinstance(rs, (int, float)): rs = [rs]
