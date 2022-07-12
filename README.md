@@ -1,10 +1,13 @@
-# EC-LHC
+# EC-LHC (PT-BR)
 
 Repositório de códigos/programas referente ao **Mestrado em Engenharia Hidráulica e de Saneamento** do **Alex Naoki Asato Kobayashi** pelo Departamento de Engenharia Hidráulica e Saneamento da Escola de Engenharia de São Carlos na Universidade de São Paulo.
 
 Período do Mestrado: **Fevereiro/2019** até **14/04/2021** (Data limite para depósito).
 
 Qualificação aprovado: **03/03/2020** (Banca: Edson Wendland, Rodrigo Porto, Maria Mercedes)
+
+Defesa do Mestrado: **Aprovado no dia 19/05/2021** (Banca: Edson Wendland, Osvaldo Cabral, Debora Regina Roberti)
+
 
 ## Fases do projeto do Mestrado
 O projeto de Mestrado apresentado na Qualificação consiste basicamente em 3 (três) partes principais:
